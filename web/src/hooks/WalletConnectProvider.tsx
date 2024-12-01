@@ -12,8 +12,8 @@ const WalletContext = createContext<WalletContextProps>({
   address: "",
   isLoading: false,
   balance: "",
-  connect: () => {},
-  disconnect: () => {},
+  connect: () => { },
+  disconnect: () => { },
   catsContractInstance: null,
   catsContractFactoryInstance: null,
 });

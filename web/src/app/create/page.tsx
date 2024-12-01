@@ -17,6 +17,14 @@ interface DeployContractProps {
   maxExpansionRate: string;
 }
 
+const fields = [
+  { id: "tokenName", label: "Token Name", type: "text" },
+  { id: "tokenSymbol", label: "Token Symbol", type: "text" },
+  { id: "maxSupply", label: "Maximum Supply", type: "number" },
+  { id: "thresholdSupply", label: "Threshold Supply", type: "number" },
+  { id: "maxExpansionRate", label: "Maximum Expansion Rate (%)", type: "number" },
+];
+
 export default function CreateCAT() {
   const [formData, setFormData] = useState<DeployContractProps>({
     tokenName: "",
@@ -30,44 +38,28 @@ export default function CreateCAT() {
 
   const deployContract = async () => {
     try {
-      // Ensure the contract factory instance is available
       if (!catsContractFactoryInstance) {
         toast.error("Contract factory instance not available");
         return;
       }
 
-      // Prepare constructor arguments
-      const maxSupply = parseInt(formData.maxSupply);
-      const thresholdSupply = parseInt(formData.thresholdSupply);
-      const maxExpansionRate = formData.maxExpansionRate.toString(); // Convert to string
-      const name = formData.tokenName;
-      const symbol = formData.tokenSymbol;
+      const { maxSupply, thresholdSupply, maxExpansionRate, tokenName, tokenSymbol } = formData;
 
-      // Deploy CAT contract
-      toast.success("Deploying CAT contract...");
       const tx = await catsContractFactoryInstance.methods
         .createCAT(
-          maxSupply,
-          thresholdSupply,
-          maxExpansionRate,
-          name,
-          symbol
+          parseInt(maxSupply),
+          parseInt(thresholdSupply),
+          maxExpansionRate.toString(),
+          tokenName,
+          tokenSymbol
         )
-        .send({ from: address, gas: 3000000, gasPrice: 10000000000 })
-        .on('receipt', function (receipt: any) {
-          console.log(receipt);
-        });
+        .send({ from: address, gas: 3000000, gasPrice: 10000000000 });
 
-      toast.success("CAT contract deployed!", {
-        duration: 5000,
-      });
-
-      // Handle successful deployment (e.g., show success message, redirect)
-      console.log("CAT deployed successfully:", tx);
+      toast.success("CAT contract deployed!");
+      console.log("Deployment successful:", tx);
     } catch (error) {
       console.error("Error deploying CAT:", error);
       toast.error("Error deploying CAT");
-      // Handle error (e.g., show error message)
     }
   };
 
@@ -75,89 +67,47 @@ export default function CreateCAT() {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
-    } as DeployContractProps);
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    try {
-      // Deploy CAT contract
-      await deployContract();
-      // Handle successful deployment (e.g., show success message, redirect)
-    } catch (error) {
-      console.error("Error deploying CAT:", error);
-      // Handle error (e.g., show error message)
-    }
+    await deployContract();
   };
 
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-6">Create CAT</h1>
-        {!address ? (
-          <ConnectWallet />
-        ) : (
-          <form onSubmit={handleSubmit} className="max-w-md">
-            <div className="mb-4">
-              <Label htmlFor="tokenName">Token Name</Label>
-              <Input
-                id="tokenName"
-                name="tokenName"
-                type="text"
-                required
-                value={formData.tokenName}
-                onChange={handleChange}
-              />
-            </div>
-            <div className="mb-4">
-              <Label htmlFor="tokenSymbol">Token Symbol</Label>
-              <Input
-                id="tokenSymbol"
-                name="tokenSymbol"
-                type="text"
-                required
-                value={formData.tokenSymbol}
-                onChange={handleChange}
-              />
-            </div>
-            <div className="mb-4">
-              <Label htmlFor="maxSupply">Maximum Supply</Label>
-              <Input
-                id="maxSupply"
-                name="maxSupply"
-                type="number"
-                required
-                value={formData.maxSupply}
-                onChange={handleChange}
-              />
-            </div>
-            <div className="mb-4">
-              <Label htmlFor="thresholdSupply">Threshold Supply</Label>
-              <Input
-                id="thresholdSupply"
-                name="thresholdSupply"
-                type="number"
-                required
-                value={formData.thresholdSupply}
-                onChange={handleChange}
-              />
-            </div>
-            <div className="mb-4">
-              <Label htmlFor="maxExpansionRate">
-                Maximum Expansion Rate (%)
-              </Label>
-              <Input
-                id="maxExpansionRate"
-                name="maxExpansionRate"
-                type="number"
-                required
-                value={formData.maxExpansionRate}
-                onChange={handleChange}
-              />
-            </div>
-            <Button type="submit">Deploy CAT</Button>
-          </form>
-        )}
+      <div className="min-h-screen flex items-center justify-center">
+        <div
+          className={`container w-80% md:w-[60%] mx-auto rounded-[50px] flex flex-col items-center justify-center px-4 md:mt-8 py-8 text-center bg-[#B5E8F8] dark:bg-black`}
+        >
+          <h1 className="text-3xl font-bold mb-6">Create CAT</h1>
+          {!address ? (
+            <ConnectWallet />
+          ) : (
+            <form onSubmit={handleSubmit} className="max-w-full space-y-3 md:space-y-6">
+              {fields.map(({ id, label, type }) => (
+                <div key={id} className="flex flex-col md:flex-row items-center space-x-4">
+                  <Label htmlFor={id} className="w-md md:w-2/5 text-lg text-left py-3 md:py-0">
+                    {label}
+                  </Label>
+                  <Input
+                    id={id}
+                    name={id}
+                    type={type}
+                    required
+                    value={formData[id as keyof DeployContractProps]}
+                    onChange={handleChange}
+                    className="flex-1 max-w-full"
+                  />
+                </div>
+              ))}
+              <Button type="submit" className="w-md">
+                Deploy CAT
+              </Button>
+            </form>
+          )}
+        </div>
       </div>
     </Layout>
   );

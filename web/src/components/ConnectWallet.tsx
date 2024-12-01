@@ -5,16 +5,23 @@ import { useWallet } from "@/hooks/WalletConnectProvider";
 const ConnectWallet = () => {
   const { connect, disconnect, address } = useWallet();
 
+
   return (
     <div>
       {address ? (
         <div>
-          <Button onClick={disconnect} className="w-32">
+          <Button
+            onClick={disconnect}
+            className="custom-button"
+          >
             {address.slice(0, 6)}...{address.slice(-4)}
           </Button>
         </div>
       ) : (
-        <Button onClick={connect} className="w-32">
+        <Button
+          onClick={connect}
+          className="custom-button font-medium"
+        >
           Connect Wallet
         </Button>
       )}

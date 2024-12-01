@@ -48,7 +48,7 @@ export default function MyCATsPage() {
 
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 mt-9 justify-center text-center">
         <h1 className="text-3xl font-bold mb-6">My CATs</h1>
         {ownedCATs && ownedCATs.length > 0 ? (
           <ul className="space-y-4">
