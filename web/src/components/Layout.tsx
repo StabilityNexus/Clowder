@@ -1,39 +1,29 @@
 import Head from "next/head";
-import Link from "next/link";
-import React from "react";
-import ConnectWallet from "./ConnectWallet";
+import React, { useEffect, useState } from "react";
+import Navbar from "./Navbar";
+import Footer from "./Footer";
+import { useTheme } from "next-themes";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
+  const { theme } = useTheme();
+
   return (
-    <div className="min-h-screen flex flex-col bg-secondary text-primary">
+    <div
+      className={`min-h-screen flex flex-col bg-cover bg-centerbg-white text-black bg-white bg-[url('../images/background-light.png')] dark:text-white dark:bg-black  dark:bg-[url('../images/background-dark.png')] }`}
+    /*style={
+      theme === "dark"
+        ? { backgroundImage: `url(${darkThemeBack.src})` }
+        : { backgroundImage: `url(${lightThemeBack.src})` }
+    }*/
+    >
       <Head>
         <title>Clowder</title>
         <link rel="icon" href="/favicon.ico" />
       </Head>
 
-      <header className="p-4">
-        <div className="container mx-auto flex justify-between items-center">
-          <Link href="/" className="text-2xl font-bold">
-            Clowder
-          </Link>
-          <nav>
-            <ul className="flex space-x-4">
-              <li>
-                <Link href="/create">Create CAT</Link>
-              </li>
-              <li>
-                <Link href="/my-cats">My CATs</Link>
-              </li>
-            </ul>
-          </nav>
-          <div className="flex">
-            
-            <ConnectWallet />
-          </div>
-        </div>
-      </header>
-
+      <Navbar />
       <main className="flex-grow">{children}</main>
+      <Footer />
     </div>
   );
 }
