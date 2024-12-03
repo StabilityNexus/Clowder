@@ -1,9 +1,8 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { useWallet } from "@/hooks/WalletConnectProvider"; // Example hook for wallet context
+import React from "react";
+import { useWallet } from "@/hooks/WalletConnectProvider";
 
-// Generate an avatar URL using DiceBear API based on the user's wallet address
 function generateAvatar(walletAddress: string): string {
   const baseUrl = "https://api.dicebear.com/6.x/identicon/svg";
   return `${baseUrl}?seed=${encodeURIComponent(walletAddress)}`;
@@ -24,9 +23,9 @@ const Avatar = () => {
       <img
         src={avatarUrl}
         alt="User Avatar"
-        className="w-11 h-11 rounded-full border shadow-lg"
-        width={40}
-        height={40}
+        className="w-10 h-10 rounded-full border shadow-lg"
+        width={35}
+        height={35}
       />
     </div>
   );
