@@ -16,7 +16,7 @@ import Service_3 from "../images/Service_3.png";
 import catLight from "../images/Light_cat.png";
 import catDark from "../images/Dark_cat.png";
 import { useTheme } from "next-themes";
-import { faGithub, faDiscord, faGitlab, faTwitter } from "@fortawesome/free-brands-svg-icons";
+import { faGithub, faDiscord, faGitlab, faTwitter, faTelegram } from "@fortawesome/free-brands-svg-icons";
 
 const services = [
   { image: Service_1, alt: "Buy and Sell CAT", description: "Buy and Sell CAT" },
@@ -25,10 +25,10 @@ const services = [
 ];
 
 const contact_links = [
-  { href: "https://github.com", icon: faGithub },
-  { href: "https://discord.com", icon: faDiscord },
-  { href: "https://gitlab.com", icon: faGitlab },
-  { href: "https://twitter.com", icon: faTwitter },
+  { href: "https://github.com/StabilityNexus", icon: faGithub },
+  { href: "https://discord.gg/YzDKeEfWtS", icon: faDiscord },
+  { href: "https://t.me/StabilityNexus", icon: faTelegram },
+  { href: "https://x.com/StabilityNexus", icon: faTwitter },
 ];
 
 export default function Home() {
