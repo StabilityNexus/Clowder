@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Image from "next/image";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { useState } from "react";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +15,7 @@ import Service_3 from "../images/Service_3.png";
 import catLight from "../images/Light_cat.png";
 import catDark from "../images/Dark_cat.png";
 import { useTheme } from "next-themes";
-import { faGithub, faDiscord, faGitlab, faTwitter, faTelegram } from "@fortawesome/free-brands-svg-icons";
+import { faGithub, faDiscord, faTwitter, faTelegram } from "@fortawesome/free-brands-svg-icons";
 
 const services = [
   { image: Service_1, alt: "Buy and Sell CAT", description: "Buy and Sell CAT" },
@@ -34,8 +33,8 @@ const contact_links = [
 export default function Home() {
   const { resolvedTheme } = useTheme(); // Use resolvedTheme for accurate theme detection
   const [isThemeReady, setIsThemeReady] = useState(false);
-  const { theme } = useTheme();
   const [catAddress, setCatAddress] = useState("");
+  const [isWalletConnected, setIsWalletConnected] = useState(false); // Track wallet connection state
   const router = useRouter();
   const { address } = useWallet();
 
@@ -50,6 +49,10 @@ export default function Home() {
       setIsThemeReady(true);
     }
   }, [resolvedTheme]);
+
+  useEffect(() => {
+    setIsWalletConnected(!!address);
+  }, [address]);
 
   if (!isThemeReady) return null;
 
@@ -87,7 +90,9 @@ export default function Home() {
               </a>
             ))}
           </div>
-          {address ? (
+          {!isWalletConnected ? (
+            <ConnectWallet />
+          ) : (
             <div className=" max-w-full">
               <Button onClick={() => router.push("/create")} className=" mb-2" >
                 Create CAT
@@ -101,10 +106,7 @@ export default function Home() {
                 />
               </div>
               <Button onClick={handleUseCAT}>Use CAT</Button>
-
             </div>
-          ) : (
-            <ConnectWallet />
           )}
         </section>
 

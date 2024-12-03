@@ -21,13 +21,12 @@ const WalletContext = createContext<WalletContextProps>({
 export function WalletConnectProvider({
   children,
 }: React.PropsWithChildren<{}>) {
-  const [address, setAddress] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [balance, setBalance] = useState("");
+  const [address, setAddress] = useState<string>("");
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [balance, setBalance] = useState<string>("");
   const [web3, setWeb3] = useState<Web3 | null>(null);
   const [catsContractInstance, setCatsContractInstance] = useState<any>(null);
-  const [catsContractFactoryInstance, setCatsContractFactoryInstance] =
-    useState<any>(null);
+  const [catsContractFactoryInstance, setCatsContractFactoryInstance] = useState<any>(null);
 
   const initContracts = async () => {
     if (!web3) return;
@@ -50,15 +49,28 @@ export function WalletConnectProvider({
         const web3Instance = new Web3(provider as any);
         setWeb3(web3Instance);
 
+        // Try to load address from localStorage on page load
+        const savedAddress = localStorage.getItem("walletAddress");
+        if (savedAddress) {
+          setAddress(savedAddress);
+          const savedBalance = localStorage.getItem("walletBalance");
+          if (savedBalance) setBalance(savedBalance);
+        }
+
         // Listen for account changes
         (provider as any).on("accountsChanged", async (accounts: string[]) => {
           if (accounts.length > 0) {
             setAddress(accounts[0]);
             const balance = await web3Instance.eth.getBalance(accounts[0]);
-            setBalance(web3Instance.utils.fromWei(balance, "ether"));
+            const balanceInEther = web3Instance.utils.fromWei(balance, "ether");
+            setBalance(balanceInEther);
+            localStorage.setItem("walletAddress", accounts[0]);
+            localStorage.setItem("walletBalance", balanceInEther);
           } else {
             setAddress("");
             setBalance("");
+            localStorage.removeItem("walletAddress");
+            localStorage.removeItem("walletBalance");
           }
         });
       } else {
@@ -77,7 +89,12 @@ export function WalletConnectProvider({
       });
       setAddress(accounts[0]);
       const balance = await web3.eth.getBalance(accounts[0]);
-      setBalance(web3.utils.fromWei(balance, "ether"));
+      const balanceInEther = web3.utils.fromWei(balance, "ether");
+      setBalance(balanceInEther);
+
+      // Save to localStorage
+      localStorage.setItem("walletAddress", accounts[0]);
+      localStorage.setItem("walletBalance", balanceInEther);
     } catch (error) {
       console.error("Error connecting to MetaMask:", error);
     } finally {
@@ -88,6 +105,8 @@ export function WalletConnectProvider({
   const disconnect = () => {
     setAddress("");
     setBalance("");
+    localStorage.removeItem("walletAddress");
+    localStorage.removeItem("walletBalance");
   };
 
   return (

@@ -1,7 +1,7 @@
 "use client";
 
 import { CatsProps } from "@/types/cats";
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useState } from "react";
 
 interface CatsContextProps {
   cat: CatsProps;
@@ -9,16 +9,25 @@ interface CatsContextProps {
 }
 
 const CatsContext = createContext<CatsContextProps>({
-  cat: { name: "", address: "" },
+  cat: {
+    name: "", address: "",
+    tokenName: "",
+    tokenSymbol: ""
+  },
   isOwner: false,
 });
 
-export function CatsProvider({ children }: React.PropsWithChildren<{}>) {
+export function CatsProvider({ children }: React.PropsWithChildren<unknown>) {
   const [isOwner, setIsOwner] = useState(false);
+
   return (
     <CatsContext.Provider
       value={{
-        cat: { name: "CAT", address: "0x1234" },
+        cat: {
+          name: "CAT", address: "0x1234", // Static address or could be dynamic
+          tokenName: "",
+          tokenSymbol: ""
+        },
         isOwner: isOwner,
       }}
     >
@@ -27,10 +36,12 @@ export function CatsProvider({ children }: React.PropsWithChildren<{}>) {
   );
 }
 
-export function useCAT({ address }: { address: string }) {
-  try {
-    return useContext(CatsContext);
-  } catch (e) {
-    throw new Error("useCAT must be used within a CATsProvider");
+export function useCAT() {
+  const context = useContext(CatsContext);
+
+  if (!context) {
+    throw new Error("useCAT must be used within a CatsProvider");
   }
+
+  return context;
 }
