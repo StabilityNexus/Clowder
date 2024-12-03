@@ -51,7 +51,7 @@ export default function Home() {
   }, [resolvedTheme]);
 
   useEffect(() => {
-    setIsWalletConnected(!!address);
+    setIsWalletConnected(!!address); // Update wallet connection state when address changes
   }, [address]);
 
   if (!isThemeReady) return null;

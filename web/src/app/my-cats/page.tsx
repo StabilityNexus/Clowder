@@ -15,7 +15,6 @@ export default function MyCATsPage() {
 
   const getOwnedCATs = async () => {
     if (!catsContractFactoryInstance) return [];
-
     const cats = await catsContractFactoryInstance.methods
       .getOwnedCATs(address)
       .call();
@@ -24,11 +23,15 @@ export default function MyCATsPage() {
 
   const getCatDetails = async (catAddress: string) => {
     const provider = await detectEthereumProvider();
-    const web3 = new Web3(provider as any);
-    const catsContractInstance = new web3.eth.Contract(CONTRIBUTION_ACCOUNTING_TOKEN_ABI, catAddress);
-    const tokenName = await catsContractInstance.methods.tokenName().call();
-    const tokenSymbol = await catsContractInstance.methods.tokenSymbol().call();
-    return { address: catAddress, tokenName, tokenSymbol };
+    if (provider) {
+      const web3 = new Web3(provider as unknown as Web3['givenProvider']);
+      const catsContractInstance = new web3.eth.Contract(CONTRIBUTION_ACCOUNTING_TOKEN_ABI, catAddress);
+      const tokenName = await catsContractInstance.methods.tokenName().call();
+      const tokenSymbol = await catsContractInstance.methods.tokenSymbol().call();
+      return { address: catAddress, tokenName, tokenSymbol };
+    } else {
+      throw new Error("Ethereum provider not found");
+    }
   };
 
   useEffect(() => {
@@ -44,7 +47,7 @@ export default function MyCATsPage() {
     if (address && !isLoading) {
       fetchOwnedCATs();
     }
-  }, [address, isLoading]);
+  }, [address, isLoading, getOwnedCATs]);
 
   return (
     <Layout>
@@ -64,7 +67,7 @@ export default function MyCATsPage() {
             ))}
           </ul>
         ) : (
-          <p>You don't own any CATs yet.</p>
+          <p>You don&apos;t own any CATs yet.</p>
         )}
       </div>
     </Layout>

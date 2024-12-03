@@ -23,9 +23,9 @@ const Avatar = () => {
       <img
         src={avatarUrl}
         alt="User Avatar"
-        className="w-11 h-11 rounded-full border shadow-lg"
-        width={40}
-        height={40}
+        className="w-10 h-10 rounded-full border shadow-lg"
+        width={35}
+        height={35}
       />
     </div>
   );
