@@ -138,11 +138,11 @@ export default function Home() {
               <p className="text-lg md:text-2xl mb-4 font-mono">
                 Share your insights on this topic, and let us know if there’s anything you’d like to expand on or include.
               </p>
-              <hr className="bg-black dark:bg-white" style={{ width: "80%", height: "1.5px", fontWeight: "bold", marginBottom: "10px" }} />
+              <hr className="bg-black dark:bg-white" style={{ width: "80%", height: "1px", fontWeight: "bold", marginBottom: "10px" }} />
               <p className="text-lg md:text-2xl mb-3 font-mono">
                 Let’s connect through:
               </p>
-              <hr className="bg-black dark:bg-white" style={{ width: "50%", height: "2px", fontWeight: "bold", marginBottom: "15px" }} />
+              <hr className="bg-black dark:bg-white" style={{ width: "50%", height: "1px", fontWeight: "bold", marginBottom: "15px" }} />
               <div className="flex flex-col md:flex-row space-y-2 md:space-x-4 md:space-y-0 ">
                 {contact_links.map(({ href, icon }, index) => (
                   <a

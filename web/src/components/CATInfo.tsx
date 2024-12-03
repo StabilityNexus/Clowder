@@ -2,10 +2,10 @@
 import React from "react";
 
 interface CATInfoProps {
-  cat: any;
+  cat: string;
 }
 
-const CATInfo: React.FC<CATInfoProps> = (cat) => {
+const CATInfo: React.FC<CATInfoProps> = () => {
   return <div>Works Rendering CATS</div>;
 };
 

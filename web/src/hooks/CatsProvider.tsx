@@ -18,7 +18,7 @@ const CatsContext = createContext<CatsContextProps>({
 });
 
 export function CatsProvider({ children }: React.PropsWithChildren<unknown>) {
-  const [isOwner, setIsOwner] = useState(false);
+  const [isOwner] = useState(false);
 
   return (
     <CatsContext.Provider
