@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Layout from "@/components/Layout";
 import { CatsProps } from "@/types/cats";
 import Link from "next/link";
@@ -13,19 +13,22 @@ export default function MyCATsPage() {
   const [ownedCATs, setOwnedCATs] = useState<CatsProps[] | null>(null);
   const { address, catsContractFactoryInstance, isLoading } = useWallet();
 
-  const getOwnedCATs = async () => {
+  const getOwnedCATs = useCallback(async () => {
     if (!catsContractFactoryInstance) return [];
     const cats = await catsContractFactoryInstance.methods
       .getOwnedCATs(address)
       .call();
     return cats;
-  };
+  }, [catsContractFactoryInstance, address]);
 
   const getCatDetails = async (catAddress: string) => {
     const provider = await detectEthereumProvider();
     if (provider) {
-      const web3 = new Web3(provider as unknown as Web3['givenProvider']);
-      const catsContractInstance = new web3.eth.Contract(CONTRIBUTION_ACCOUNTING_TOKEN_ABI, catAddress);
+      const web3 = new Web3(provider as unknown as Web3["givenProvider"]);
+      const catsContractInstance = new web3.eth.Contract(
+        CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
+        catAddress
+      );
       const tokenName = await catsContractInstance.methods.tokenName().call();
       const tokenSymbol = await catsContractInstance.methods.tokenSymbol().call();
       return { address: catAddress, tokenName, tokenSymbol };

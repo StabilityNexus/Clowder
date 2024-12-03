@@ -4,7 +4,6 @@ import { WalletContextProps } from "@/types/walletContext";
 import detectEthereumProvider from "@metamask/detect-provider";
 import React, { createContext, useState, useEffect } from "react";
 import CAT_FACTORY_ABI from "../contractsABI/CatFactoryABI.js";
-import CONTRIBUTION_ACCOUNTING_TOKEN_ABI from "../contractsABI/ContributionAccountingTokenABI.js";
 import { CATS_FACTORY_ADDRESS } from "../constants.js";
 import Web3 from "web3";
 
@@ -20,17 +19,20 @@ const WalletContext = createContext<WalletContextProps>({
 
 export function WalletConnectProvider({
   children,
-}: React.PropsWithChildren<{}>) {
+}: React.PropsWithChildren<unknown>) {
   const [address, setAddress] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [balance, setBalance] = useState<string>("");
   const [web3, setWeb3] = useState<Web3 | null>(null);
-  const [catsContractInstance, setCatsContractInstance] = useState<any>(null);
+  // eslint-disable-next-line  @typescript-eslint/no-explicit-any
+  const [catsContractInstance] = useState<any>(null);
+  // eslint-disable-next-line  @typescript-eslint/no-explicit-any
   const [catsContractFactoryInstance, setCatsContractFactoryInstance] = useState<any>(null);
 
   const initContracts = async () => {
     if (!web3) return;
     const catsContractFactoryInstance = new web3.eth.Contract(
+      // eslint-disable-next-line  @typescript-eslint/no-explicit-any
       CAT_FACTORY_ABI as any,
       CATS_FACTORY_ADDRESS
     );
@@ -46,6 +48,7 @@ export function WalletConnectProvider({
     const init = async () => {
       const provider = await detectEthereumProvider();
       if (provider) {
+        // eslint-disable-next-line  @typescript-eslint/no-explicit-any
         const web3Instance = new Web3(provider as any);
         setWeb3(web3Instance);
 
@@ -58,6 +61,7 @@ export function WalletConnectProvider({
         }
 
         // Listen for account changes
+        // eslint-disable-next-line  @typescript-eslint/no-explicit-any
         (provider as any).on("accountsChanged", async (accounts: string[]) => {
           if (accounts.length > 0) {
             setAddress(accounts[0]);
@@ -84,6 +88,7 @@ export function WalletConnectProvider({
     if (!web3) return;
     setIsLoading(true);
     try {
+      // eslint-disable-next-line  @typescript-eslint/no-explicit-any
       const accounts = await (web3.currentProvider as any).request({
         method: "eth_requestAccounts",
       });

@@ -28,7 +28,7 @@
     "react-hot-toast": "^2.4.1",
     "tailwind-merge": "^2.5.2",
     "tailwindcss-animate": "^1.0.7",
-    "web3": "^4.13.0"
+    "web3": "^4.15.0"
   },
   "devDependencies": {
     "@types/node": "^20",

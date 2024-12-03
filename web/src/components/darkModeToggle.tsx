@@ -6,11 +6,10 @@ import { useTheme } from "next-themes";
 import { Button } from "@/components/ui/button";
 
 export function ModeToggle() {
-  const { theme, setTheme, resolvedTheme } = useTheme(); // `resolvedTheme` ensures accurate system preference detection
+  const { setTheme, resolvedTheme } = useTheme(); // `resolvedTheme` ensures accurate system preference detection
 
   return (
     <Button
-      variant="outline"
       size="icon"
       style={{
         borderRadius: "50px",
