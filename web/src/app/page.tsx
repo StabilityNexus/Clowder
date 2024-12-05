@@ -41,6 +41,8 @@ export default function Home() {
   const handleUseCAT = () => {
     if (catAddress.trim()) {
       router.push(`/cat/${catAddress}`);
+      const value = catAddress;
+      localStorage.setItem("param", value);
     }
   };
 
