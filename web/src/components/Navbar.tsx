@@ -29,12 +29,12 @@ const Navbar = () => {
     if (!isThemeReady) return null;
 
     return (
-        <header className={`p-5 bg-[#B5E8F8] dark:bg-black`}>
-            <div className="container mx-auto flex items-center justify-between relative">
+        <header className="p-5 bg-[#B5E8F8] dark:bg-black">
+            <div className="mx-auto flex items-center justify-end relative">
                 {/* Logo and Text */}
                 <div>
                     <Link href="/">
-                        <div className="absolute ml-[-23px] flex items-baseline items-center left-0 top-1/2 transform -translate-y-1/2 mt-[36px]">
+                        <div className="absolute ml-[-23px] flex items-baseline left-0 top-1/2 transform -translate-y-1/2 mt-[36px]">
                             <Image
                                 src={resolvedTheme === "dark" ? logo_dark : logo_light}
                                 alt="Clowder"
@@ -127,7 +127,7 @@ const Navbar = () => {
 
                 {/* Desktop Navigation Links */}
                 <nav
-                    className="hidden md:flex absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 space-x-8 text-2xl font-semibold text-center"
+                    className="hidden md:flex relative space-x-8 text-2xl font-semibold text-center"
                     style={{ fontFamily: "var(--font-bebas-nueue)" }}
                 >
                     <Link href="/" className="hover:text-blue-600">
@@ -145,7 +145,7 @@ const Navbar = () => {
                 </nav>
 
                 {/* Connect Wallet and Light/Dark Toggle for Desktop */}
-                <div className="hidden md:flex items-center space-x-4">
+                <div className="hidden md:flex items-center space-x-4 ml-8">
                     {address ? (
                         <Link href="./my-cats">
                             <Avatar />
