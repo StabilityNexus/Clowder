@@ -127,19 +127,19 @@ const Navbar = () => {
 
                 {/* Desktop Navigation Links */}
                 <nav
-                    className="hidden md:flex absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 space-x-8 text-2xl font-semibold text-center"
+                    className="hidden md:flex absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 space-x-4 lg:space-x-8 text-xl lg:text-2xl font-semibold text-center whitespace-nowrap overflow-x-auto max-w-[calc(100%-400px)]"
                     style={{ fontFamily: "var(--font-bebas-nueue)" }}
                 >
-                    <Link href="/" className="hover:text-blue-600">
+                    <Link href="/" className="hover:text-blue-600 px-2">
                         HOME
                     </Link>
-                    <Link href="/create" className="hover:text-blue-600">
+                    <Link href="/create" className="hover:text-blue-600 px-2">
                         CREATE
                     </Link>
-                    <Link href="/#Services" className="hover:text-blue-600">
+                    <Link href="/#Services" className="hover:text-blue-600 px-2">
                         SERVICES
                     </Link>
-                    <Link href="/#Contact" className="hover:text-blue-600">
+                    <Link href="/#Contact" className="hover:text-blue-600 px-2">
                         CONTACT
                     </Link>
                 </nav>
