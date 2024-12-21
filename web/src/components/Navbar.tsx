@@ -86,29 +86,11 @@ const Navbar = () => {
                             >
                                 <li>
                                     <Link
-                                        href="/"
-                                        className="block py-2 hover:text-blue-600"
-                                        onClick={() => setIsMenuOpen(false)}
-                                    >
-                                        HOME
-                                    </Link>
-                                </li>
-                                <li>
-                                    <Link
                                         href="/create"
                                         className="block py-2 hover:text-blue-600"
                                         onClick={() => setIsMenuOpen(false)}
                                     >
-                                        CREATE
-                                    </Link>
-                                </li>
-                                <li>
-                                    <Link
-                                        href="/#Services"
-                                        className="block py-2 hover:text-blue-600"
-                                        onClick={() => setIsMenuOpen(false)}
-                                    >
-                                        SERVICES
+                                        CREATE CAT
                                     </Link>
                                 </li>
                                 <li>
@@ -117,7 +99,7 @@ const Navbar = () => {
                                         className="block py-2 hover:text-blue-600"
                                         onClick={() => setIsMenuOpen(false)}
                                     >
-                                        CONTACT
+                                        ABOUT US
                                     </Link>
                                 </li>
                             </ul>
@@ -130,17 +112,11 @@ const Navbar = () => {
                     className="hidden md:flex relative space-x-8 text-2xl font-semibold text-center"
                     style={{ fontFamily: "var(--font-bebas-nueue)" }}
                 >
-                    <Link href="/" className="hover:text-blue-600">
-                        HOME
-                    </Link>
                     <Link href="/create" className="hover:text-blue-600">
                         CREATE
                     </Link>
-                    <Link href="/#Services" className="hover:text-blue-600">
-                        SERVICES
-                    </Link>
                     <Link href="/#Contact" className="hover:text-blue-600">
-                        CONTACT
+                        ABOUT US
                     </Link>
                 </nav>
 
