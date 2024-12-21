@@ -74,8 +74,8 @@ export default function Home() {
           </div>
 
           <p className="text-xl md:text-2xl mb-6 max-w-4xl font-mono">
-            Through Clowder, you can create
-            Contribution Accounting Tokens (CATs) to track contributions to your projects.
+            Create Contribution Accounting Tokens (CATs) <br />
+            to track contributions to your projects.
           </p>
           <div className="flex space-x-4 mb-8">
             {contact_links.map(({ href, icon }, index) => (
