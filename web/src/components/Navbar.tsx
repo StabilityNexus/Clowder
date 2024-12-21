@@ -113,7 +113,7 @@ const Navbar = () => {
                     style={{ fontFamily: "var(--font-bebas-nueue)" }}
                 >
                     <Link href="/create" className="hover:text-blue-600">
-                        CREATE
+                        CREATE CAT
                     </Link>
                     <Link href="/#Contact" className="hover:text-blue-600">
                         ABOUT US
