@@ -136,13 +136,14 @@ export default function Home() {
             {/* Contact Info */}
             <div>
               <p className="text-lg md:text-2xl mb-4 font-mono">
-                Clowder was developed by The Stable Order within the Stability Nexus.
+                Clowder was developed by <br />
+                The Stable Order <br />
+                within the Stability Nexus.
               </p>
               <hr className="bg-black dark:bg-white" style={{ width: "80%", height: "1px", fontWeight: "bold", marginBottom: "10px" }} />
               <p className="text-lg md:text-2xl mb-3 font-mono">
-                Join us through:
+                Contact us through:
               </p>
-              <hr className="bg-black dark:bg-white" style={{ width: "50%", height: "1px", fontWeight: "bold", marginBottom: "15px" }} />
               <div className="flex flex-col md:flex-row space-y-2 md:space-x-4 md:space-y-0 ">
                 {contact_links.map(({ href, icon }, index) => (
                   <a
