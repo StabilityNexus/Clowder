@@ -18,7 +18,7 @@ import { useTheme } from "next-themes";
 import { faGithub, faDiscord, faTwitter, faTelegram } from "@fortawesome/free-brands-svg-icons";
 
 const services = [
-  { image: Service_1, alt: "Transferable", description: "Transferable" },
+  { image: Service_1, alt: "Semi-Transferable", description: "Semi-Transferable" },
   { image: Service_2, alt: "Secure against Inflation", description: "Secure against Inflation" },
   { image: Service_3, alt: "Simple to Mint", description: "Simple to Mint" },
 ];
