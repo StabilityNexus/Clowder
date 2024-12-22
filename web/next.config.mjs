@@ -4,6 +4,7 @@ const nextConfig = {
     images: {
         unoptimized: true,
     },
+    basePath: '/Clowder'
 };
 
 export default nextConfig;
