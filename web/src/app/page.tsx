@@ -18,9 +18,9 @@ import { useTheme } from "next-themes";
 import { faGithub, faDiscord, faTwitter, faTelegram } from "@fortawesome/free-brands-svg-icons";
 
 const services = [
-  { image: Service_1, alt: "Buy and Sell CAT", description: "Buy and Sell CAT" },
-  { image: Service_2, alt: "Secure Wallet", description: "Secure Wallet" },
-  { image: Service_3, alt: "24/7 Customer Support", description: "24/7 Customer Support" },
+  { image: Service_1, alt: "Semi-Transferable", description: "Semi-Transferable" },
+  { image: Service_2, alt: "Secure against Inflation", description: "Secure against Inflation" },
+  { image: Service_3, alt: "Simple to Mint", description: "Simple to Mint" },
 ];
 
 const contact_links = [
@@ -64,7 +64,7 @@ export default function Home() {
           <div>
             {/* Heading for Desktop */}
             <h1 className="hidden md:block text-3xl font-bold mb-8 font-mono">
-              Welcome to <span className="text-[#5cacc5] dark:text-[#BA9901]">Clowder</span> - A Tool to Track Your GitHub Contributions
+              Welcome to <span className="text-[#5cacc5] dark:text-[#BA9901]">Clowder</span>
             </h1>
 
             {/* Heading for Mobile */}
@@ -74,8 +74,8 @@ export default function Home() {
           </div>
 
           <p className="text-xl md:text-2xl mb-6 max-w-4xl font-mono">
-            Clowder is a premier blockchain platform offering fast and secure transactions. It enables users to create
-            Contribution Accounting Tokens (CATs) for tracking contributions within decentralized organizations.
+            Create Contribution Accounting Tokens (CATs) <br />
+            to track contributions to your projects.
           </p>
           <div className="flex space-x-4 mb-8">
             {contact_links.map(({ href, icon }, index) => (
@@ -113,7 +113,7 @@ export default function Home() {
         {/* Services Section */}
         <section className="py-16 text-center">
           <h2 id="Services" className="text-3xl md:text-5xl font-bold mb-12" style={{ fontFamily: "var(--font-bebas-nueue)" }}>
-            Our Services
+            Why CATs?
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
             {services.map((service, index) => (
@@ -130,19 +130,20 @@ export default function Home() {
         {/* Contact Us Section */}
         <section className="py-16 mx-4 md:mx-12">
           <h2 id="Contact" className="text-3xl md:text-5xl font-bold mb-12 text-center" style={{ fontFamily: "var(--font-bebas-nueue)" }}>
-            Contact Us
+            About Us
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center md:py-20">
             {/* Contact Info */}
             <div>
               <p className="text-lg md:text-2xl mb-4 font-mono">
-                Share your insights on this topic, and let us know if there’s anything you’d like to expand on or include.
+                Clowder was developed by <br />
+                The Stable Order <br />
+                within the Stability Nexus.
               </p>
               <hr className="bg-black dark:bg-white" style={{ width: "80%", height: "1px", fontWeight: "bold", marginBottom: "10px" }} />
               <p className="text-lg md:text-2xl mb-3 font-mono">
-                Let’s connect through:
+                Contact us through:
               </p>
-              <hr className="bg-black dark:bg-white" style={{ width: "50%", height: "1px", fontWeight: "bold", marginBottom: "15px" }} />
               <div className="flex flex-col md:flex-row space-y-2 md:space-x-4 md:space-y-0 ">
                 {contact_links.map(({ href, icon }, index) => (
                   <a
