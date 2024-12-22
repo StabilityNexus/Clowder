@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { useWallet } from "@/hooks/WalletConnectProvider";
 import ConnectWallet from "@/components/ConnectWallet";
 import toast from "react-hot-toast";
+import { useRouter } from "next/navigation";
 
 interface DeployContractProps {
   tokenName: string;
@@ -35,6 +36,20 @@ export default function CreateCAT() {
   });
 
   const { address, catsContractFactoryInstance } = useWallet();
+  const router = useRouter();
+
+  // Retrieve transaction history from localStorage
+  const getTransactionHistory = () => {
+    const history = localStorage.getItem("transactionHistory");
+    return history ? JSON.parse(history) : [];
+  };
+
+  // Save transaction to localStorage
+  const saveTransaction = (txDetails: object) => {
+    const history = getTransactionHistory();
+    history.push(txDetails);
+    localStorage.setItem("transactionHistory", JSON.stringify(history));
+  };
 
   const deployContract = async () => {
     try {
@@ -45,6 +60,7 @@ export default function CreateCAT() {
 
       const { maxSupply, thresholdSupply, maxExpansionRate, tokenName, tokenSymbol } = formData;
 
+      // Send the transaction to deploy the contract
       const tx = await catsContractFactoryInstance.methods
         .createCAT(
           parseInt(maxSupply),
@@ -54,6 +70,20 @@ export default function CreateCAT() {
           tokenSymbol
         )
         .send({ from: address, gas: 3000000, gasPrice: 10000000000 });
+
+      // Prepare transaction details to store
+      const txDetails = {
+        tokenName,
+        tokenSymbol,
+        maxSupply,
+        thresholdSupply,
+        maxExpansionRate,
+        transactionHash: tx.transactionHash,
+        timestamp: new Date().toISOString(),
+      };
+
+      // Save transaction details in localStorage
+      saveTransaction(txDetails);
 
       toast.success("CAT contract deployed!");
       console.log("Deployment successful:", tx);
@@ -73,6 +103,7 @@ export default function CreateCAT() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     await deployContract();
+    router.push("/my-cats");
   };
 
   return (
