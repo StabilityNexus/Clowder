@@ -37,6 +37,7 @@ export function WalletConnectProvider({
       CATS_FACTORY_ADDRESS
     );
     setCatsContractFactoryInstance(catsContractFactoryInstance);
+    localStorage.setItem("contract", "catsContractFactoryInstance");
   };
 
   useEffect(() => {
