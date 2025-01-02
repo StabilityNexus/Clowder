@@ -1,34 +1,47 @@
 "use client";
 
-import * as React from "react";
 import { Moon, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
-import { Button } from "@/components/ui/button";
 
 export function ModeToggle() {
-  const { setTheme, resolvedTheme } = useTheme(); // `resolvedTheme` ensures accurate system preference detection
+  const { theme, setTheme } = useTheme();
+
+  function toggleTheme() {
+    const newTheme = theme === "light" ? "dark" : "light";
+    localStorage.setItem("color-scheme", newTheme);
+    setTheme(newTheme);
+  }
 
   return (
-    <Button
-      size="icon"
-      style={{
-        borderRadius: "50px",
-        width: "3rem",
-        backgroundColor: resolvedTheme === "dark" ? "#230402" : "white",
-        border: resolvedTheme === "dark" ? "2px solid #BA9901" : "2px solid black",
-      }}
-      onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+    <div
+      className="flex items-center space-x-4"
+      onClick={toggleTheme}
+      aria-label="Toggle theme"
+      role="button"
     >
-      {resolvedTheme === "dark" ? (
-        <Moon
-          className="h-[1.2rem] w-[1.5rem] transition-transform rotate-0 scale-100"
-          style={{ color: "#BA9901" }}
-        />
-      ) : (
+      <div className="flex items-center w-20 h-10 rounded-full bg-gray-300 dark:bg-gray-600 relative p-1 cursor-pointer transition-colors active:scale-95">
+        <div
+          className={`w-8 h-8 rounded-full shadow-md transform transition-transform duration-300 ease-in-out ${
+            theme === "light"
+              ? "translate-x-0 bg-white"
+              : "translate-x-10 bg-black"
+          }`}
+        ></div>
         <Sun
-          className="h-[1.2rem] w-[1.5rem] transition-transform rotate-0 scale-100"
+          className={`absolute left-2 top-1/2 transform -translate-y-1/2 transition-opacity duration-300 ease-in-out ${
+            theme === "light" ? "opacity-100" : "opacity-0"
+          }`}
+          size={24}
+          color="aqua"
         />
-      )}
-    </Button>
+        <Moon
+          className={`absolute right-2 top-1/2 transform -translate-y-1/2 transition-opacity duration-300 ease-in-out ${
+            theme === "light" ? "opacity-0" : "opacity-100"
+          }`}
+          size={24}
+          color="yellow"
+        />
+      </div>
+    </div>
   );
 }

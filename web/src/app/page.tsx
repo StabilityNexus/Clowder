@@ -34,6 +34,7 @@ export default function Home() {
   const { resolvedTheme } = useTheme(); // Use resolvedTheme for accurate theme detection
   const [isThemeReady, setIsThemeReady] = useState(false);
   const [catAddress, setCatAddress] = useState("");
+  const [showPopup, setShowPopup] = useState(false);
   const [isWalletConnected, setIsWalletConnected] = useState(false); // Track wallet connection state
   const router = useRouter();
   const { address } = useWallet();
@@ -91,23 +92,37 @@ export default function Home() {
             ))}
           </div>
           {!isWalletConnected ? (
-            <ConnectWallet />
-          ) : (
-            <div className=" max-w-full">
-              <Button onClick={() => router.push("/create")} className=" mb-2" >
-                Create CAT
-              </Button>
-              <div className="flex py-3 w-full">
-                <Input
-                  placeholder="Enter CAT address"
-                  value={catAddress}
-                  onChange={(e) => setCatAddress(e.target.value)}
-                  style={{ width: "500px" }}
-                />
+              <ConnectWallet />
+            ) : (
+              <div className="max-w-full">
+                <Button onClick={() => router.push("/create")} className="mb-2 mr-2">
+                  Create CAT
+                </Button>
+                <Button onClick={() => setShowPopup(true)}>Use CAT</Button>
+
+                {showPopup && (
+                  <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+                    <div className="bg-white dark:bg-gray-800 p-6 rounded shadow-lg w-11/12 max-w-md">
+                      <h2 className="text-lg font-bold mb-4">Enter CAT Address</h2>
+                      <Input
+                        placeholder="Enter CAT address"
+                        value={catAddress}
+                        onChange={(e) => setCatAddress(e.target.value)}
+                        className="mb-4"
+                        style={{ width: "100%" }}
+                      />
+                      <div className="flex justify-end space-x-4">
+                        <Button onClick={() => setShowPopup(false)}>
+                          Cancel
+                        </Button>
+                        <Button onClick={handleUseCAT}>Submit</Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-              <Button onClick={handleUseCAT}>Use CAT</Button>
-            </div>
-          )}
+            )}
+
         </section>
 
         {/* Services Section */}
@@ -117,14 +132,24 @@ export default function Home() {
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
             {services.map((service, index) => (
-              <div key={index} className="flex flex-col items-center">
-                <Image src={service.image} alt={service.alt} width={250} height={150} />
+              <div
+                key={index}
+                className="flex flex-col items-center transform-xl transition-transform duration-300 hover:scale-105"
+              >
+                <Image
+                  src={service.image}
+                  alt={service.alt}
+                  width={250}
+                  height={150}
+                  className="rounded-md"
+                />
                 <p className="text-lg md:text-2xl font-semibold mt-3 font-mono">
                   {service.description}
                 </p>
               </div>
             ))}
           </div>
+
         </section>
 
         {/* Contact Us Section */}
