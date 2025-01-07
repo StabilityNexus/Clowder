@@ -2,13 +2,11 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/Counters.sol";
 import "./ContributionAccountingToken.sol"; // Ensure this import points to your CAT contract file
 
 contract CATFactory is Ownable {
-    using Counters for Counters.Counter;
-
-    Counters.Counter private _tokenIds;
+    // Tracking the next tokenId (no Counters library, just a simple uint)
+    uint256 private _nextTokenId;
 
     // Mapping from owner address to token addresses
     mapping(address => address[]) public administerableTokens; // Now public
@@ -35,8 +33,8 @@ contract CATFactory is Ownable {
         string memory name,
         string memory symbol
     ) public returns (address) {
-        _tokenIds.increment();
-        uint256 newTokenId = _tokenIds.current();
+        uint256 newTokenId = _nextTokenId;
+        _nextTokenId++; // Increment tokenId for the next contract
 
         ContributionAccountingToken newCAT = new ContributionAccountingToken(
             msg.sender,
@@ -70,6 +68,6 @@ contract CATFactory is Ownable {
      * @return The total number of CATs.
      */
     function totalCATs() public view returns (uint256) {
-        return _tokenIds.current();
+        return _nextTokenId - 1; // Subtract 1 because the counter starts from 1
     }
 }
