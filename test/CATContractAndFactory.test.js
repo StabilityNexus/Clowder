@@ -40,7 +40,7 @@ describe("CATFactory and ContributionAccountingToken", function () {
         expect(await token.symbol()).to.equal("TTK");
     });
 
-    it("should handle AccessControlUnauthorizedAccount error and mint if allowed", async function () {
+    it("should grant Minter Role and mint from other address", async function () {
         token = await ethers.getContractAt("ContributionAccountingToken", catAddress);
 
         await token.grantMinterRole(addr1.address);
