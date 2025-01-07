@@ -84,6 +84,16 @@ const Navbar = () => {
                                 className="flex flex-col space-y-4 text-2xl font-semibold text-center"
                                 style={{ fontFamily: "var(--font-bebas-nueue)" }}
                             >
+                                {address && (
+                                    <li>
+                                        <Link href="/my-cats">
+                                            <Avatar />
+                                         </Link>
+                                    </li>
+                                )}
+                                <li>
+                                    <ConnectWallet />
+                                </li>
                                 <li>
                                     <Link
                                         href="/create"
@@ -123,9 +133,12 @@ const Navbar = () => {
                 {/* Connect Wallet and Light/Dark Toggle for Desktop */}
                 <div className="hidden md:flex items-center space-x-4 ml-8">
                     {address ? (
-                        <Link href="./my-cats">
-                            <Avatar />
-                        </Link>
+                        <div className="flex space-x-8">
+                            <ConnectWallet />
+                            <Link href="./my-cats">
+                                <Avatar />
+                            </Link>
+                        </div>
                     ) : (
                         <ConnectWallet />
                     )}
