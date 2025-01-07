@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./ContributionAccountingToken.sol"; // Ensure this import points to your CAT contract file
 
 contract CATFactory is Ownable {
-    // Tracking the next tokenId (no Counters library, just a simple uint)
     uint256 private _nextTokenId;
 
     // Mapping from owner address to token addresses
@@ -33,9 +32,6 @@ contract CATFactory is Ownable {
         string memory name,
         string memory symbol
     ) public returns (address) {
-        uint256 newTokenId = _nextTokenId;
-        _nextTokenId++; // Increment tokenId for the next contract
-
         ContributionAccountingToken newCAT = new ContributionAccountingToken(
             msg.sender,
             maxSupply,
@@ -47,8 +43,8 @@ contract CATFactory is Ownable {
 
         address catAddress = address(newCAT);
         administerableTokens[msg.sender].push(catAddress);
-
-        emit CATCreated(msg.sender, catAddress, newTokenId);
+        _nextTokenId++; // Increment tokenId for the next contract
+        emit CATCreated(msg.sender, catAddress, _nextTokenId);
 
         return catAddress;
     }
@@ -68,6 +64,6 @@ contract CATFactory is Ownable {
      * @return The total number of CATs.
      */
     function totalCATs() public view returns (uint256) {
-        return _nextTokenId - 1; // Subtract 1 because the counter starts from 1
+        return _nextTokenId;
     }
 }
