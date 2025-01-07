@@ -43,8 +43,8 @@ contract CATFactory is Ownable {
 
         address catAddress = address(newCAT);
         administerableTokens[msg.sender].push(catAddress);
-        _nextTokenId++; // Increment tokenId for the next contract
         emit CATCreated(msg.sender, catAddress, _nextTokenId);
+        _nextTokenId++; // Increment tokenId for the next contract
 
         return catAddress;
     }
