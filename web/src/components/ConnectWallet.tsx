@@ -9,14 +9,14 @@ const ConnectWallet = () => {
   return (
     <div>
       {address ? (
-        <div>
-          <Button
-            onClick={disconnect}
-            className="custom-button"
-          >
+        <div className="md:flex gap-x-4">
+          <Button className="mb-2 md:mb-0">
             {address.slice(0, 6)}...{address.slice(-4)}
           </Button>
-        </div>
+          <Button onClick={disconnect} className="mb-2 md:mb-0">
+            Disconnect Wallet
+          </Button>
+      </div>
       ) : (
         <Button
           onClick={connect}
