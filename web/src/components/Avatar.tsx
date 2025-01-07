@@ -2,6 +2,7 @@
 
 import React from "react";
 import { useWallet } from "@/hooks/WalletConnectProvider";
+import Image from "next/image";
 
 function generateAvatar(walletAddress: string): string {
   const baseUrl = "https://api.dicebear.com/6.x/identicon/svg";
@@ -20,7 +21,7 @@ const Avatar = () => {
 
   return (
     <div className="flex flex-col items-center">
-      <img
+      <Image
         src={avatarUrl}
         alt="User Avatar"
         className="w-10 h-10 rounded-full border shadow-lg"
