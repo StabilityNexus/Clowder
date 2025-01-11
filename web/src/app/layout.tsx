@@ -3,8 +3,9 @@ import localFont from "next/font/local";
 import "./globals.css";
 import { CatsProvider } from "@/hooks/CatsProvider";
 import { WalletConnectProvider } from "@/hooks/WalletConnectProvider";
-import { ThemeProvider } from "@/components/theme-provider";
+import { ThemeProvider } from "@/hooks/ThemeProvider";
 import { Toaster } from "react-hot-toast";
+import { WalletProvider } from "@/hooks/WalletProvider";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -24,14 +25,17 @@ const bebasNueue = localFont({
 
 export const metadata: Metadata = {
   title: "Clowder - Contribution Accounting Tokens (CATs)",
-  description: "Clowder helps you track contributions to your projects with Contribution Accounting Tokens (CATs). Secure, semi-transferable, and easy to mint.",
-  keywords: "Clowder, Contribution Accounting Tokens, CATs, secure, mint tokens, projects, community, Stability Nexus",
+  description:
+    "Clowder helps you track contributions to your projects with Contribution Accounting Tokens (CATs). Secure, semi-transferable, and easy to mint.",
+  keywords:
+    "Clowder, Contribution Accounting Tokens, CATs, secure, mint tokens, projects, community, Stability Nexus",
   robots: "index, follow",
   openGraph: {
     type: "website",
     url: "https://clowder.stability.nexus/",
     title: "Clowder - Contribution Accounting Tokens (CATs)",
-    description: "Track contributions to your projects with Contribution Accounting Tokens (CATs) on Clowder. Simple to mint, secure against inflation.",
+    description:
+      "Track contributions to your projects with Contribution Accounting Tokens (CATs) on Clowder. Simple to mint, secure against inflation.",
     images: [
       {
         url: "https://stability.nexus/logos/clowder.png",
@@ -45,11 +49,16 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     site: "@StabilityNexus",
     title: "Clowder - Contribution Accounting Tokens (CATs)",
-    description: "Track contributions to your projects using Contribution Accounting Tokens (CATs) on Clowder. Simple to mint, secure against inflation.",
+    description:
+      "Track contributions to your projects using Contribution Accounting Tokens (CATs) on Clowder. Simple to mint, secure against inflation.",
   },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode; }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html lang="en">
       <body
@@ -57,7 +66,7 @@ export default function RootLayout({ children }: { children: React.ReactNode; })
       >
         <Toaster />
         <CatsProvider>
-          <WalletConnectProvider>
+          <WalletProvider>
             <ThemeProvider
               attribute="class"
               defaultTheme="light"
@@ -66,7 +75,7 @@ export default function RootLayout({ children }: { children: React.ReactNode; })
             >
               {children}
             </ThemeProvider>
-          </WalletConnectProvider>
+          </WalletProvider>
         </CatsProvider>
       </body>
     </html>
