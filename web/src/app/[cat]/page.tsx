@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import InteractionClient from "./InteractionClient";
 import { Suspense } from "react";
+import Layout from "@/components/Layout";
 
 export async function generateStaticParams() {
   return [{ cat: "c" }];
@@ -8,8 +9,10 @@ export async function generateStaticParams() {
 
 export default function VaultPage() {
   return (
-    <Suspense>
-      <InteractionClient />
-    </Suspense>
+    <Layout>
+      <Suspense>
+        <InteractionClient />
+      </Suspense>
+    </Layout>
   );
 }
