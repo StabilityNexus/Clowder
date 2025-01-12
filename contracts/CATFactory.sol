@@ -2,14 +2,14 @@
 pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "./ContributionAccountingToken.sol"; // Ensure this import points to your CAT contract file
+import "./ContributionAccountingToken.sol"; 
 
 contract CATFactory is Ownable {
     uint256 private _nextTokenId;
 
     // Mapping from owner address to token addresses
-    mapping(address => address[]) public administerableTokens; // Now public
-    mapping(address => address[]) public mintableTokens; // Now public
+    mapping(address => address[]) public administerableTokens; 
+    mapping(address => address[]) public mintableTokens; 
 
     // Event emitted when a new CAT is created
     event CATCreated(address indexed owner, address catAddress, uint256 tokenId);
@@ -65,5 +65,9 @@ contract CATFactory is Ownable {
      */
     function totalCATs() public view returns (uint256) {
         return _nextTokenId;
+    }
+
+    function getCATAddresses(address _creator) external view returns (address[] memory) {
+        return administerableTokens[_creator];
     }
 }

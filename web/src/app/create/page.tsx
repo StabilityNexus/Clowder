@@ -5,10 +5,22 @@ import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { useWallet } from "@/hooks/WalletConnectProvider";
-import ConnectWallet from "@/components/ConnectWallet";
+import { ConnectButton } from "@rainbow-me/rainbowkit";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
+import { ClowderVaultFactories } from "@/utils/address";
+import { useAccount } from "wagmi";
+import { config } from "@/utils/config";
+import { writeContract } from "@wagmi/core";
+import { CAT_FACTORY_ABI } from "@/contractsABI/CatFactoryABI";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "../../components/ui/card";
+import { Info } from "lucide-react";
 
 interface DeployContractProps {
   tokenName: string;
@@ -19,11 +31,41 @@ interface DeployContractProps {
 }
 
 const fields = [
-  { id: "tokenName", label: "Token Name", type: "text" },
-  { id: "tokenSymbol", label: "Token Symbol", type: "text" },
-  { id: "maxSupply", label: "Maximum Supply", type: "number" },
-  { id: "thresholdSupply", label: "Threshold Supply", type: "number" },
-  { id: "maxExpansionRate", label: "Maximum Expansion Rate (%)", type: "number" },
+  {
+    id: "tokenName",
+    label: "Token Name",
+    type: "text",
+    placeholder: "My Token",
+    description: "The name of your token",
+  },
+  {
+    id: "tokenSymbol",
+    label: "Token Symbol",
+    type: "text",
+    placeholder: "TKN",
+    description: "A short identifier for your token (2-4 characters)",
+  },
+  {
+    id: "maxSupply",
+    label: "Maximum Supply",
+    type: "number",
+    placeholder: "1000000",
+    description: "The maximum number of tokens that can exist",
+  },
+  {
+    id: "thresholdSupply",
+    label: "Threshold Supply",
+    type: "number",
+    placeholder: "500000",
+    description: "The supply threshold that triggers expansion",
+  },
+  {
+    id: "maxExpansionRate",
+    label: "Maximum Expansion Rate",
+    type: "number",
+    placeholder: "5",
+    description: "Maximum percentage the supply can expand (1-100)",
+  },
 ];
 
 export default function CreateCAT() {
@@ -34,17 +76,16 @@ export default function CreateCAT() {
     thresholdSupply: "",
     maxExpansionRate: "",
   });
+  const [isDeploying, setIsDeploying] = useState(false);
 
-  const { address, catsContractFactoryInstance } = useWallet();
+  const { address } = useAccount();
   const router = useRouter();
 
-  // Retrieve transaction history from localStorage
   const getTransactionHistory = () => {
     const history = localStorage.getItem("transactionHistory");
     return history ? JSON.parse(history) : [];
   };
 
-  // Save transaction to localStorage
   const saveTransaction = (txDetails: object) => {
     const history = getTransactionHistory();
     history.push(txDetails);
@@ -53,43 +94,52 @@ export default function CreateCAT() {
 
   const deployContract = async () => {
     try {
-      if (!catsContractFactoryInstance) {
+      setIsDeploying(true);
+      const chainId = config.state.chainId;
+      if (!ClowderVaultFactories[chainId]) {
         toast.error("Contract factory instance not available");
         return;
       }
 
-      const { maxSupply, thresholdSupply, maxExpansionRate, tokenName, tokenSymbol } = formData;
+      const {
+        maxSupply,
+        thresholdSupply,
+        maxExpansionRate,
+        tokenName,
+        tokenSymbol,
+      } = formData;
 
-      // Send the transaction to deploy the contract
-      const tx = await catsContractFactoryInstance.methods
-        .createCAT(
+      const tx = await writeContract(config as any, {
+        address: ClowderVaultFactories[chainId],
+        abi: CAT_FACTORY_ABI,
+        functionName: "createCAT",
+        args: [
           parseInt(maxSupply),
           parseInt(thresholdSupply),
           maxExpansionRate.toString(),
           tokenName,
-          tokenSymbol
-        )
-        .send({ from: address, gas: 3000000, gasPrice: 10000000000 });
+          tokenSymbol,
+        ],
+      });
 
-      // Prepare transaction details to store
       const txDetails = {
         tokenName,
         tokenSymbol,
         maxSupply,
         thresholdSupply,
         maxExpansionRate,
-        transactionHash: tx.transactionHash,
+        transactionHash: tx,
         timestamp: new Date().toISOString(),
       };
 
-      // Save transaction details in localStorage
       saveTransaction(txDetails);
-
-      toast.success("CAT contract deployed!");
-      console.log("Deployment successful:", tx);
+      toast.success("CAT contract deployed successfully!");
+      router.push("/my-cats");
     } catch (error) {
       console.error("Error deploying CAT:", error);
-      toast.error("Error deploying CAT");
+      toast.error("Failed to deploy CAT contract");
+    } finally {
+      setIsDeploying(false);
     }
   };
 
@@ -103,41 +153,71 @@ export default function CreateCAT() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     await deployContract();
-    router.push("/my-cats");
   };
 
   return (
     <Layout>
-      <div className="min-h-screen flex items-center justify-center">
-        <div
-          className={`container w-80% md:w-[60%] mx-auto rounded-[50px] flex flex-col items-center justify-center px-4 md:mt-8 py-8 text-center bg-[#B5E8F8] dark:bg-black`}
-        >
-          <h1 className="text-3xl font-bold mb-6">Create CAT</h1>
-          {!address ? (
-            <ConnectWallet />
-          ) : (
-            <form onSubmit={handleSubmit} className="max-w-full space-y-3 md:space-y-6">
-              {fields.map(({ id, label, type }) => (
-                <div key={id} className="flex flex-col md:flex-row items-center space-x-4">
-                  <Label htmlFor={id} className="w-md md:w-2/5 text-lg text-left py-3 md:py-0">
-                    {label}
-                  </Label>
-                  <Input
-                    id={id}
-                    name={id}
-                    type={type}
-                    required
-                    value={formData[id as keyof DeployContractProps]}
-                    onChange={handleChange}
-                    className="flex-1 max-w-full"
-                  />
+      <div className="min-h-screen py-12 px-4">
+        <div className="max-w-3xl mx-auto">
+          <Card className="border-2">
+            <CardHeader className="space-y-1">
+              <CardTitle className="text-3xl font-bold text-center">
+                Create CAT
+              </CardTitle>
+              <CardDescription className="text-center text-gray-500 dark:text-gray-400">
+                Deploy a new Contribution Accounting Token
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {!address ? (
+                <div className="flex flex-col items-center space-y-4 p-6">
+                  <p className="text-gray-500 dark:text-gray-400 mb-4">
+                    Connect your wallet to create a new CAT
+                  </p>
+                  <ConnectButton />
                 </div>
-              ))}
-              <Button type="submit" className="w-md">
-                Deploy CAT
-              </Button>
-            </form>
-          )}
+              ) : (
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  {fields.map(
+                    ({ id, label, type, placeholder, description }) => (
+                      <div key={id} className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor={id} className="text-sm font-medium">
+                            {label}
+                          </Label>
+                          <div className="group relative">
+                            <Info className="h-4 w-4 text-gray-500" />
+                            <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-xs text-gray-50 opacity-0 transition-opacity group-hover:opacity-100">
+                              {description}
+                            </span>
+                          </div>
+                        </div>
+                        <Input
+                          id={id}
+                          name={id}
+                          type={type}
+                          placeholder={placeholder}
+                          required
+                          value={formData[id as keyof DeployContractProps]}
+                          onChange={handleChange}
+                          className="w-full"
+                        />
+                      </div>
+                    )
+                  )}
+                  <div className="pt-6">
+                    <Button
+                      type="submit"
+                      className="w-full h-12 text-lg font-medium transition-all duration-200 hover:scale-[1.02]"
+                      disabled={isDeploying}
+                    >
+                      {isDeploying ? "Deploying..." : "Deploy CAT"}
+                    </Button>
+                  </div>
+                </form>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
     </Layout>
