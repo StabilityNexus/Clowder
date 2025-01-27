@@ -131,7 +131,7 @@ export default function MyCATsPage() {
 
   return (
     <Layout>
-      <div className="w-full min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-indigo-900">
+      <div className="w-full min-h-screen ">
         <div className="container mx-auto py-12 px-4 sm:px-6 lg:px-8">
           <motion.h1
             className="text-4xl font-extrabold text-center text-gray-900 dark:text-white mb-8"

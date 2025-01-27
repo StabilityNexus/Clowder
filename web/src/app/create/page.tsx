@@ -158,7 +158,7 @@ export default function CreateCAT() {
 
   return (
     <Layout>
-      <div className="min-h-screen py-12 px-4 bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-indigo-900">
+      <div className="min-h-screen py-12 px-4">
         <motion.div
           className="max-w-3xl mx-auto"
           initial={{ opacity: 0, y: 20 }}
