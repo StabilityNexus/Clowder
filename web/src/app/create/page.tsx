@@ -19,8 +19,9 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
-} from "../../components/ui/card";
-import { Info } from "lucide-react";
+} from "@/components/ui/card";
+import { Info, Loader2 } from "lucide-react";
+import { motion } from "framer-motion";
 
 interface DeployContractProps {
   tokenName: string;
@@ -114,8 +115,8 @@ export default function CreateCAT() {
         abi: CAT_FACTORY_ABI,
         functionName: "createCAT",
         args: [
-          parseInt(maxSupply),
-          parseInt(thresholdSupply),
+          Number.parseInt(maxSupply),
+          Number.parseInt(thresholdSupply),
           maxExpansionRate.toString(),
           tokenName,
           tokenSymbol,
@@ -157,36 +158,54 @@ export default function CreateCAT() {
 
   return (
     <Layout>
-      <div className="min-h-screen py-12 px-4">
-        <div className="max-w-3xl mx-auto">
-          <Card className="border-2">
+      <div className="min-h-screen py-12 px-4 bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-indigo-900">
+        <motion.div
+          className="max-w-3xl mx-auto"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <Card className="border-2 shadow-lg">
             <CardHeader className="space-y-1">
-              <CardTitle className="text-3xl font-bold text-center">
+              <CardTitle className="text-4xl font-extrabold text-center bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-purple-500">
                 Create CAT
               </CardTitle>
-              <CardDescription className="text-center text-gray-500 dark:text-gray-400">
+              <CardDescription className="text-center text-lg text-gray-600 dark:text-gray-400">
                 Deploy a new Contribution Accounting Token
               </CardDescription>
             </CardHeader>
             <CardContent>
               {!address ? (
-                <div className="flex flex-col items-center space-y-4 p-6">
-                  <p className="text-gray-500 dark:text-gray-400 mb-4">
+                <motion.div
+                  className="flex flex-col items-center space-y-4 p-6"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <p className="text-gray-600 dark:text-gray-400 mb-4 text-lg">
                     Connect your wallet to create a new CAT
                   </p>
-                  <ConnectButton />
-                </div>
+                  <ConnectButton
+                    label={<span className="text-black">Connect Wallet</span>}
+                  />{" "}
+                </motion.div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-6">
                   {fields.map(
-                    ({ id, label, type, placeholder, description }) => (
-                      <div key={id} className="space-y-2">
+                    ({ id, label, type, placeholder, description }, index) => (
+                      <motion.div
+                        key={id}
+                        className="space-y-2"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3, delay: index * 0.1 }}
+                      >
                         <div className="flex items-center justify-between">
                           <Label htmlFor={id} className="text-sm font-medium">
                             {label}
                           </Label>
                           <div className="group relative">
-                            <Info className="h-4 w-4 text-gray-500" />
+                            <Info className="h-4 w-4 text-gray-500 cursor-help" />
                             <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-xs text-gray-50 opacity-0 transition-opacity group-hover:opacity-100">
                               {description}
                             </span>
@@ -200,25 +219,37 @@ export default function CreateCAT() {
                           required
                           value={formData[id as keyof DeployContractProps]}
                           onChange={handleChange}
-                          className="w-full"
+                          className="w-full transition-all duration-200 focus:ring-2 focus:ring-blue-500"
                         />
-                      </div>
+                      </motion.div>
                     )
                   )}
-                  <div className="pt-6">
+                  <motion.div
+                    className="pt-6"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: fields.length * 0.1 }}
+                  >
                     <Button
                       type="submit"
                       className="w-full h-12 text-lg font-medium transition-all duration-200 hover:scale-[1.02]"
                       disabled={isDeploying}
                     >
-                      {isDeploying ? "Deploying..." : "Deploy CAT"}
+                      {isDeploying ? (
+                        <span className="flex items-center justify-center">
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Deploying...
+                        </span>
+                      ) : (
+                        "Deploy CAT"
+                      )}
                     </Button>
-                  </div>
+                  </motion.div>
                 </form>
               )}
             </CardContent>
           </Card>
-        </div>
+        </motion.div>
       </div>
     </Layout>
   );

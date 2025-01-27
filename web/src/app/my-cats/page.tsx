@@ -1,24 +1,24 @@
-"use client"
+"use client";
 
-import { useCallback, useEffect, useState } from "react"
-import Layout from "@/components/Layout"
-import Link from "next/link"
-import { useAccount } from "wagmi"
-import { ClowderVaultFactories } from "@/utils/address"
-import { config } from "@/utils/config"
-import { getPublicClient } from "@wagmi/core"
-import { CAT_FACTORY_ABI } from "@/contractsABI/CatFactoryABI"
-import detectEthereumProvider from "@metamask/detect-provider"
-import Web3 from "web3"
-import CONTRIBUTION_ACCOUNTING_TOKEN_ABI from "@/contractsABI/ContributionAccountingTokenABI"
-import { motion } from "framer-motion"
-import { Loader2, AlertCircle } from "lucide-react"
+import { useEffect, useState } from "react";
+import Layout from "@/components/Layout";
+import Link from "next/link";
+import { useAccount } from "wagmi";
+import { ClowderVaultFactories } from "@/utils/address";
+import { config } from "@/utils/config";
+import { getPublicClient } from "@wagmi/core";
+import { CAT_FACTORY_ABI } from "@/contractsABI/CatFactoryABI";
+import detectEthereumProvider from "@metamask/detect-provider";
+import Web3 from "web3";
+import CONTRIBUTION_ACCOUNTING_TOKEN_ABI from "@/contractsABI/ContributionAccountingTokenABI";
+import { motion } from "framer-motion";
+import { Loader2, AlertCircle } from "lucide-react";
 
 interface CatDetails {
-  chainId: string
-  address: `0x${string}`
-  tokenName: string
-  tokenSymbol: string
+  chainId: string;
+  address: `0x${string}`;
+  tokenName: string;
+  tokenSymbol: string;
 }
 
 export default function MyCATsPage() {
@@ -74,7 +74,7 @@ export default function MyCATsPage() {
         args: [address as `0x${string}`],
       })) as `0x${string}`[];
 
-      console.log(catAddresses)
+      console.log(catAddresses);
 
       const provider = await detectEthereumProvider();
       if (!provider) {
@@ -98,7 +98,7 @@ export default function MyCATsPage() {
             }) as Promise<string>,
           ]);
 
-          console.log(tokenName, tokenSymbol)
+          console.log(tokenName, tokenSymbol);
 
           return {
             chainId,
@@ -125,9 +125,9 @@ export default function MyCATsPage() {
 
   useEffect(() => {
     if (address) {
-      fetchCATsFromAllChains()
+      fetchCATsFromAllChains();
     }
-  }, [address, fetchCATsFromAllChains])
+  }, [address, fetchCATsFromAllChains]);
 
   return (
     <Layout>
@@ -144,7 +144,9 @@ export default function MyCATsPage() {
           {isLoading ? (
             <div className="flex justify-center items-center">
               <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-              <span className="ml-2 text-lg text-gray-700 dark:text-gray-300">Loading your CATs...</span>
+              <span className="ml-2 text-lg text-gray-700 dark:text-gray-300">
+                Loading your CATs...
+              </span>
             </div>
           ) : error ? (
             <motion.div
@@ -170,16 +172,23 @@ export default function MyCATsPage() {
                   whileHover={{ scale: 1.03 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  <Link href={`/c?vault=${cat.address}&chainId=${cat.chainId}`} className="block p-6">
+                  <Link
+                    href={`/c?vault=${cat.address}&chainId=${cat.chainId}`}
+                    className="block p-6"
+                  >
                     <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
                       {cat.tokenName || cat.address}
                     </h2>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Symbol: {cat.tokenSymbol}</p>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                      Symbol: {cat.tokenSymbol}
+                    </p>
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900 px-2 py-1 rounded-full">
                         Chain: {cat.chainId}
                       </span>
-                      <span className="text-sm text-gray-500 dark:text-gray-400">View Details →</span>
+                      <span className="text-sm text-gray-500 dark:text-gray-400">
+                        View Details →
+                      </span>
                     </div>
                   </Link>
                 </motion.li>
@@ -192,9 +201,11 @@ export default function MyCATsPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
             >
-              <p className="text-xl text-gray-700 dark:text-gray-300">You don't own any CATs yet.</p>
+              <p className="text-xl text-gray-700 dark:text-gray-300">
+                You don't own any CATs yet.
+              </p>
               <Link
-                href="/create-cat"
+                href="/create"
                 className="mt-4 inline-block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition-colors duration-300"
               >
                 Create a CAT
@@ -204,6 +215,5 @@ export default function MyCATsPage() {
         </div>
       </div>
     </Layout>
-  )
+  );
 }
-
