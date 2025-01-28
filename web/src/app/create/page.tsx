@@ -167,7 +167,7 @@ export default function CreateCAT() {
         >
           <Card className="border-2 shadow-lg">
             <CardHeader className="space-y-1">
-              <CardTitle className="text-4xl font-extrabold text-center bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-purple-500">
+              <CardTitle className="text-4xl font-extrabold text-center text-[#5cacc5] dark:text-[#BA9901]">
                 Create CAT
               </CardTitle>
               <CardDescription className="text-center text-lg text-gray-600 dark:text-gray-400">
@@ -186,7 +186,7 @@ export default function CreateCAT() {
                     Connect your wallet to create a new CAT
                   </p>
                   <ConnectButton
-                    label={<span className="text-black">Connect Wallet</span>}
+                    label={<span className="text-black dark:text-white">Connect Wallet</span>}
                   />{" "}
                 </motion.div>
               ) : (

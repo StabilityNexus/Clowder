@@ -134,7 +134,7 @@ export default function MyCATsPage() {
       <div className="w-full min-h-screen ">
         <div className="container mx-auto py-12 px-4 sm:px-6 lg:px-8">
           <motion.h1
-            className="text-4xl font-extrabold text-center text-gray-900 dark:text-white mb-8"
+            className="text-4xl font-extrabold text-center text-[#5cacc5] dark:text-[#BA9901] mb-8"
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
