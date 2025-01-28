@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Layout from "@/components/Layout";
 import Link from "next/link";
 import { useAccount } from "wagmi";
@@ -11,6 +11,8 @@ import { CAT_FACTORY_ABI } from "@/contractsABI/CatFactoryABI";
 import detectEthereumProvider from "@metamask/detect-provider";
 import Web3 from "web3";
 import CONTRIBUTION_ACCOUNTING_TOKEN_ABI from "@/contractsABI/ContributionAccountingTokenABI";
+import { motion } from "framer-motion";
+import { Loader2, AlertCircle } from "lucide-react";
 
 interface CatDetails {
   chainId: string;
@@ -20,7 +22,7 @@ interface CatDetails {
 }
 
 export default function MyCATsPage() {
-  const [ownedCATs, setOwnedCATs] = useState<CatDetails[] | null>(null);
+  const [ownedCATs, setOwnedCATs] = useState<CatDetails[] | null>();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { address } = useAccount();
@@ -72,7 +74,7 @@ export default function MyCATsPage() {
         args: [address as `0x${string}`],
       })) as `0x${string}`[];
 
-      console.log(catAddresses)
+      console.log(catAddresses);
 
       const provider = await detectEthereumProvider();
       if (!provider) {
@@ -96,7 +98,7 @@ export default function MyCATsPage() {
             }) as Promise<string>,
           ]);
 
-          console.log(tokenName, tokenSymbol)
+          console.log(tokenName, tokenSymbol);
 
           return {
             chainId,
@@ -125,38 +127,90 @@ export default function MyCATsPage() {
     if (address) {
       fetchCATsFromAllChains();
     }
-  }, [address]);
+  }, [address, fetchCATsFromAllChains]);
 
   return (
     <Layout>
-      <div className="w-full">
-        <div className="container mx-auto py-8 mt-9 justify-center text-center">
-          <h1 className="text-3xl font-bold mb-6">My CATs</h1>
+      <div className="w-full min-h-screen ">
+        <div className="container mx-auto py-12 px-4 sm:px-6 lg:px-8">
+          <motion.h1
+            className="text-4xl font-extrabold text-center text-gray-900 dark:text-white mb-8"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            My CATs
+          </motion.h1>
           {isLoading ? (
-            <p>Loading your CATs...</p>
+            <div className="flex justify-center items-center">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+              <span className="ml-2 text-lg text-gray-700 dark:text-gray-300">
+                Loading your CATs...
+              </span>
+            </div>
           ) : error ? (
-            <p className="text-red-500">{error}</p>
+            <motion.div
+              className="flex items-center justify-center p-4 bg-red-100 dark:bg-red-900 rounded-lg"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3 }}
+            >
+              <AlertCircle className="w-6 h-6 text-red-500 mr-2" />
+              <p className="text-red-700 dark:text-red-300">{error}</p>
+            </motion.div>
           ) : ownedCATs?.length ? (
-            <ul className="space-y-4">
+            <motion.ul
+              className="grid gap-6 md:grid-cols-2 lg:grid-cols-3"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5, staggerChildren: 0.1 }}
+            >
               {ownedCATs.map((cat) => (
-                <li
+                <motion.li
                   key={`${cat.chainId}-${cat.address}`}
-                  className="border p-4 rounded-lg"
+                  className="bg-white dark:bg-gray-800 rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300"
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.98 }}
                 >
                   <Link
                     href={`/c?vault=${cat.address}&chainId=${cat.chainId}`}
-                    className="text-blue-500 hover:underline"
+                    className="block p-6"
                   >
-                    {cat.tokenName || cat.address} ({cat.tokenSymbol})
-                    <span className="ml-2 text-sm text-zinc-500">
-                      (Chain: {cat.chainId})
-                    </span>
+                    <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                      {cat.tokenName || cat.address}
+                    </h2>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                      Symbol: {cat.tokenSymbol}
+                    </p>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900 px-2 py-1 rounded-full">
+                        Chain: {cat.chainId}
+                      </span>
+                      <span className="text-sm text-gray-500 dark:text-gray-400">
+                        View Details →
+                      </span>
+                    </div>
                   </Link>
-                </li>
+                </motion.li>
               ))}
-            </ul>
+            </motion.ul>
           ) : (
-            <p>You don&apos;t own any CATs yet.</p>
+            <motion.div
+              className="text-center p-8 bg-white dark:bg-gray-800 rounded-xl shadow-md"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              <p className="text-xl text-gray-700 dark:text-gray-300">
+                You don't own any CATs yet.
+              </p>
+              <Link
+                href="/create"
+                className="mt-4 inline-block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition-colors duration-300"
+              >
+                Create a CAT
+              </Link>
+            </motion.div>
           )}
         </div>
       </div>
