@@ -29,7 +29,9 @@ const services = [
 const supportedChains = [
   { id: "534351", name: "Scroll Sepolia" },
   { id: "5115", name: "Citrea" },
-]
+  { id: "61", name: "Ethereum Classic" },
+  { id: "2001", name: "Milkomeda" },
+];
 
 const contact_links = [
   { href: "https://github.com/StabilityNexus", icon: faGithub },
