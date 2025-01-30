@@ -27,10 +27,10 @@ export const ethereumClassic = {
   },
   rpcUrls: {
     default: {
-      http: ["https://www.ethercluster.com/etc"],
+      http: ["https://etc.rivet.link"],
     },
     public: {
-      http: ["https://www.ethercluster.com/etc"],
+      http: ["https://etc.rivet.link"],
     },
   },
   blockExplorers: {

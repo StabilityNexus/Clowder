@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AEL
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./ContributionAccountingToken.sol"; 
