@@ -127,7 +127,7 @@ export default function MyCATsPage() {
     if (address) {
       fetchCATsFromAllChains();
     }
-  }, [address, fetchCATsFromAllChains]);
+  }, [address]);
 
   return (
     <Layout>
