@@ -9,7 +9,8 @@ import { config } from "@/utils/config";
 import { getPublicClient } from "@wagmi/core";
 import { CAT_FACTORY_ABI } from "@/contractsABI/CatFactoryABI";
 import detectEthereumProvider from "@metamask/detect-provider";
-import CONTRIBUTION_ACCOUNTING_TOKEN_ABI from "@/contractsABI/ContributionAccountingTokenABI";
+// import Web3 from "web3";
+import { CONTRIBUTION_ACCOUNTING_TOKEN_ABI } from "@/contractsABI/ContributionAccountingTokenABI";
 
 interface CatDetails {
   chainId: string;
@@ -17,14 +18,6 @@ interface CatDetails {
   tokenName: string;
   tokenSymbol: string;
 }
-
-// Helper function to create a timeout promise
-const withTimeout = <T,>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
-  const timeoutPromise = new Promise<T>((_, reject) => {
-    setTimeout(() => reject(new Error(`Operation timed out after ${timeoutMs}ms`)), timeoutMs);
-  });
-  return Promise.race([promise, timeoutPromise]);
-};
 
 export default function MyCATsPage() {
   const [ownedCATs, setOwnedCATs] = useState<CatDetails[] | null>(null);
@@ -72,15 +65,12 @@ export default function MyCATsPage() {
       console.log(chainId);
       console.log(factoryAddress);
 
-      const catAddresses = await withTimeout(
-        publicClient.readContract({
-          address: factoryAddress as `0x${string}`,
-          abi: CAT_FACTORY_ABI,
-          functionName: "getCATAddresses",
-          args: [address as `0x${string}`],
-        }),
-        10000 // 10 second timeout
-      ) as `0x${string}`[];
+      const catAddresses = (await publicClient.readContract({
+        address: factoryAddress as `0x${string}`,
+        abi: CAT_FACTORY_ABI,
+        functionName: "getCATAddresses",
+        args: [address as `0x${string}`],
+      })) as `0x${string}`[];
 
       console.log(catAddresses);
 
@@ -89,25 +79,21 @@ export default function MyCATsPage() {
         throw new Error("Provider not found");
       }
 
+      // const web3 = new Web3(provider as unknown as Web3["givenProvider"]);
+
       const catPromises = catAddresses.map(async (catAddress) => {
         try {
           const [tokenName, tokenSymbol] = await Promise.all([
-            withTimeout(
-              publicClient.readContract({
-                address: catAddress,
-                abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
-                functionName: "tokenName",
-              }),
-              5000 // 5 second timeout
-            ) as Promise<string>,
-            withTimeout(
-              publicClient.readContract({
-                address: catAddress,
-                abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
-                functionName: "tokenSymbol",
-              }),
-              5000 // 5 second timeout
-            ) as Promise<string>,
+            publicClient.readContract({
+              address: catAddress,
+              abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
+              functionName: "tokenName",
+            }) as Promise<string>,
+            publicClient.readContract({
+              address: catAddress,
+              abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
+              functionName: "tokenSymbol",
+            }) as Promise<string>,
           ]);
 
           console.log(tokenName, tokenSymbol);
