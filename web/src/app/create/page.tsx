@@ -67,7 +67,6 @@ const fields = [
     description: "Maximum percentage the supply can expand (1-100)",
   },
 ];
-const SUPPORTED_CHAINS = [534351, 137, 1, 6119];
 export default function CreateCAT() {
   const [formData, setFormData] = useState<DeployContractProps>({
     tokenName: "",
@@ -192,11 +191,11 @@ export default function CreateCAT() {
                     }
                   />{" "}
                 </motion.div>
-              ) : chainId && !SUPPORTED_CHAINS.includes(chainId) ? (
+              ) : chainId && !ClowderVaultFactories[chainId] ? (
                 <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6">
-                  <p>⚠ Unsupported network detected.</p>
+                  <p>⚠ Please switch to a supported network.</p>
                   <p>
-                    Please switch to a supported network or contact us on{" "}
+                    If you would like support for another network, contact us on{" "}
                     <a
                       href="https://discord.com/invite/fuuWX4AbJt"
                       target="_blank"
