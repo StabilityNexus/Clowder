@@ -22,7 +22,6 @@ import {
 } from "@/components/ui/card";
 import { Info, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
-
 interface DeployContractProps {
   tokenName: string;
   tokenSymbol: string;
@@ -68,7 +67,6 @@ const fields = [
     description: "Maximum percentage the supply can expand (1-100)",
   },
 ];
-
 export default function CreateCAT() {
   const [formData, setFormData] = useState<DeployContractProps>({
     tokenName: "",
@@ -79,7 +77,7 @@ export default function CreateCAT() {
   });
   const [isDeploying, setIsDeploying] = useState(false);
 
-  const { address } = useAccount();
+  const { address, chainId } = useAccount();
   const router = useRouter();
 
   const getTransactionHistory = () => {
@@ -186,9 +184,29 @@ export default function CreateCAT() {
                     Connect your wallet to create a new CAT
                   </p>
                   <ConnectButton
-                    label={<span className="text-black dark:text-white">Connect Wallet</span>}
+                    label={
+                      <span className="text-black dark:text-white">
+                        Connect Wallet
+                      </span>
+                    }
                   />{" "}
                 </motion.div>
+              ) : chainId && !ClowderVaultFactories[chainId] ? (
+                <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6">
+                  <p>⚠ Please switch to a supported network.</p>
+                  <p>
+                    If you would like support for another network, contact us on{" "}
+                    <a
+                      href="https://discord.com/invite/fuuWX4AbJt"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 cursor-pointer hover:underline"
+                    >
+                      Discord
+                    </a>
+                    .
+                  </p>
+                </div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-6">
                   {fields.map(
