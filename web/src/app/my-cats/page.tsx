@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Layout from "@/components/Layout";
 import Link from "next/link";
 import { useAccount } from "wagmi";
@@ -9,8 +9,8 @@ import { config } from "@/utils/config";
 import { getPublicClient } from "@wagmi/core";
 import { CAT_FACTORY_ABI } from "@/contractsABI/CatFactoryABI";
 import detectEthereumProvider from "@metamask/detect-provider";
-import Web3 from "web3";
-import CONTRIBUTION_ACCOUNTING_TOKEN_ABI from "@/contractsABI/ContributionAccountingTokenABI";
+// import Web3 from "web3";
+import { CONTRIBUTION_ACCOUNTING_TOKEN_ABI } from "@/contractsABI/ContributionAccountingTokenABI";
 import { motion } from "framer-motion";
 import { Loader2, AlertCircle } from "lucide-react";
 
@@ -22,7 +22,7 @@ interface CatDetails {
 }
 
 export default function MyCATsPage() {
-  const [ownedCATs, setOwnedCATs] = useState<CatDetails[] | null>();
+  const [ownedCATs, setOwnedCATs] = useState<CatDetails[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { address } = useAccount();
@@ -70,7 +70,7 @@ export default function MyCATsPage() {
       const catAddresses = (await publicClient.readContract({
         address: factoryAddress as `0x${string}`,
         abi: CAT_FACTORY_ABI,
-        functionName: "getVaultAddresses",
+        functionName: "getCATAddresses",
         args: [address as `0x${string}`],
       })) as `0x${string}`[];
 
@@ -78,10 +78,10 @@ export default function MyCATsPage() {
 
       const provider = await detectEthereumProvider();
       if (!provider) {
-        throw new Error("Ethereum provider not found");
+        throw new Error("Provider not found");
       }
 
-      const web3 = new Web3(provider as unknown as Web3["givenProvider"]);
+      // const web3 = new Web3(provider as unknown as Web3["givenProvider"]);
 
       const catPromises = catAddresses.map(async (catAddress) => {
         try {
@@ -127,7 +127,7 @@ export default function MyCATsPage() {
     if (address) {
       fetchCATsFromAllChains();
     }
-  }, [address, fetchCATsFromAllChains]);
+  }, [address]);
 
   return (
     <Layout>
