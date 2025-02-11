@@ -121,8 +121,9 @@ export default function Home() {
             transition={{ duration: 0.5, delay: 0.8 }}
           >
             {!isWalletConnected ? (
+              // Fixed the type error by passing a string directly to the `label` property of the `ConnectButton` component.
               <ConnectButton
-              label={<span className="text-black">Connect Wallet</span>}
+              label="Connect Wallet"
             />
             ) : (
               <div className="max-w-full">
@@ -276,7 +277,7 @@ export default function Home() {
             </div>
           </div>
           <div className="flex justify-end space-x-4">
-            <Button variant="outline" onClick={() => setShowPopup(false)}>
+            <Button variant="default" onClick={() => setShowPopup(false)}>
               Cancel
             </Button>
             <Button onClick={handleUseCAT} disabled={!catAddress.trim() || !selectedChain}>

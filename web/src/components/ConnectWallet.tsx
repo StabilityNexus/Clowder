@@ -1,9 +1,11 @@
 import React from "react";
 import { Button } from "./ui/button";
-import { useWallet } from "@/hooks/WalletConnectProvider";
+import { useAccount, useConnect, useDisconnect } from "wagmi";
 
 const ConnectWallet = () => {
-  const { connect, disconnect, address } = useWallet();
+  const { address } = useAccount();
+  const { connect } = useConnect();
+  const { disconnect } = useDisconnect();
 
 
   return (
@@ -13,13 +15,13 @@ const ConnectWallet = () => {
           <Button className="mb-2 md:mb-0">
             {address.slice(0, 6)}...{address.slice(-4)}
           </Button>
-          <Button onClick={disconnect} className="mb-2 md:mb-0">
+          <Button onClick={()=>disconnect()} className="mb-2 md:mb-0">
             Disconnect Wallet
           </Button>
       </div>
       ) : (
         <Button
-          onClick={connect}
+          onClick={()=>connect}
           className="custom-button font-medium"
         >
           Connect Wallet
