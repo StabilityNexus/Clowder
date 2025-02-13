@@ -121,9 +121,7 @@ export default function Home() {
             transition={{ duration: 0.5, delay: 0.8 }}
           >
             {!isWalletConnected ? (
-              <ConnectButton
-              label={<span className="text-black">Connect Wallet</span>}
-            />
+              <ConnectButton/>
             ) : (
               <div className="max-w-full">
                 <Button
@@ -276,7 +274,7 @@ export default function Home() {
             </div>
           </div>
           <div className="flex justify-end space-x-4">
-            <Button variant="outline" onClick={() => setShowPopup(false)}>
+            <Button onClick={() => setShowPopup(false)}>
               Cancel
             </Button>
             <Button onClick={handleUseCAT} disabled={!catAddress.trim() || !selectedChain}>
