@@ -5,8 +5,6 @@ import {
 } from "wagmi/chains";
 import {
   getDefaultConfig,
-  RainbowKitProvider,
-  darkTheme,
 } from "@rainbow-me/rainbowkit";
 import { citreaTestnet } from "@/components/CitreaTestnet";
 import { ethereumClassic } from "@/components/EthereumClassic";
