@@ -9,17 +9,27 @@ import { config } from "@/utils/config";
 import { getPublicClient } from "@wagmi/core";
 import { CAT_FACTORY_ABI } from "@/contractsABI/CatFactoryABI";
 import detectEthereumProvider from "@metamask/detect-provider";
-// import Web3 from "web3";
 import { CONTRIBUTION_ACCOUNTING_TOKEN_ABI } from "@/contractsABI/ContributionAccountingTokenABI";
 import { motion } from "framer-motion";
 import { Loader2, AlertCircle } from "lucide-react";
 
+// Define supported chain IDs
+type SupportedChainId = 1 | 137 | 534351 | 5115 | 61 | 2001;
+
 interface CatDetails {
-  chainId: string;
+  chainId: SupportedChainId;
   address: `0x${string}`;
   tokenName: string;
   tokenSymbol: string;
 }
+
+// Type guard for chain ID validation
+const isValidChainId = (
+  chainId: number | string
+): chainId is SupportedChainId => {
+  const validChainIds: SupportedChainId[] = [1, 137, 534351, 5115, 61, 2001];
+  return validChainIds.includes(Number(chainId) as SupportedChainId);
+};
 
 export default function MyCATsPage() {
   const [ownedCATs, setOwnedCATs] = useState<CatDetails[] | null>(null);
@@ -33,10 +43,11 @@ export default function MyCATsPage() {
       setError(null);
       let allCATs: CatDetails[] = [];
 
-      const chainPromises = Object.entries(ClowderVaultFactories).map(
-        ([chainId, factoryAddress]) =>
-          fetchCATsForChain(chainId, factoryAddress)
-      );
+      const chainPromises = Object.entries(ClowderVaultFactories)
+        .filter(([chainId]) => isValidChainId(chainId))
+        .map(([chainId, factoryAddress]) =>
+          fetchCATsForChain(Number(chainId) as SupportedChainId, factoryAddress)
+        );
 
       const results = await Promise.all(chainPromises);
       allCATs = results.flat().filter((cat): cat is CatDetails => cat !== null);
@@ -51,13 +62,11 @@ export default function MyCATsPage() {
   };
 
   const fetchCATsForChain = async (
-    chainId: string,
+    chainId: SupportedChainId,
     factoryAddress: string
   ): Promise<CatDetails[]> => {
     try {
-      const publicClient = getPublicClient(config, {
-        chainId: parseInt(chainId),
-      });
+      const publicClient = getPublicClient(config, { chainId });
 
       if (!publicClient || !address) {
         console.error(`No public client available for chain ${chainId}`);
@@ -80,8 +89,6 @@ export default function MyCATsPage() {
       if (!provider) {
         throw new Error("Provider not found");
       }
-
-      // const web3 = new Web3(provider as unknown as Web3["givenProvider"]);
 
       const catPromises = catAddresses.map(async (catAddress) => {
         try {
