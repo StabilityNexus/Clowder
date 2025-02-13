@@ -1,4 +1,4 @@
-'use client'
+"use client";
 
 import React, { useEffect, useState } from "react";
 import { Info } from "lucide-react";
@@ -7,6 +7,9 @@ import { getPublicClient } from "@wagmi/core";
 import { config } from "@/utils/config";
 import { useSearchParams } from "next/navigation";
 import { CONTRIBUTION_ACCOUNTING_TOKEN_ABI } from "@/contractsABI/ContributionAccountingTokenABI";
+
+// Define supported chain IDs
+type SupportedChainId = 1 | 137 | 534351 | 5115 | 61 | 2001;
 
 interface TokenDetailsState {
   tokenName: string;
@@ -19,13 +22,12 @@ interface TokenDetailsState {
 }
 
 export default function InteractionClient() {
-
   const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const [tokenAddress, setTokenAddress] = useState<`0x${string}`>("0x0");
-  const [chainId, setChainId] = useState<number>(0);
+  const [chainId, setChainId] = useState<SupportedChainId | null>(null);
 
   const [tokenDetails, setTokenDetails] = useState<TokenDetailsState>({
     tokenName: "",
@@ -44,9 +46,21 @@ export default function InteractionClient() {
 
     if (vault && chain) {
       setTokenAddress(vault as `0x${string}`);
-      setChainId(Number(chain));
+      const parsedChainId = Number(chain) as SupportedChainId;
+      // Validate chain ID
+      if (isValidChainId(parsedChainId)) {
+        setChainId(parsedChainId);
+      } else {
+        setError(`Unsupported chain ID: ${chain}`);
+      }
     }
   }, [searchParams]);
+
+  // Type guard for chain ID validation
+  const isValidChainId = (chainId: number): chainId is SupportedChainId => {
+    const validChainIds: SupportedChainId[] = [1, 137, 534351, 5115, 61, 2001];
+    return validChainIds.includes(chainId as SupportedChainId);
+  };
 
   const getTokenDetails = async () => {
     if (!tokenAddress || !chainId) {
@@ -64,7 +78,6 @@ export default function InteractionClient() {
         throw new Error(`No public client available for chain ${chainId}`);
       }
 
-      // Replace CONTRIBUTION_ACCOUNTING_TOKEN_ABI with your actual token contract ABI
       const [name, symbol, maxSupply, threshold, expansionRate] =
         (await Promise.all([
           publicClient.readContract({
@@ -117,6 +130,7 @@ export default function InteractionClient() {
     }
   }, [tokenAddress, chainId]);
 
+  // Rest of the component remains the same...
   if (isLoading) {
     return (
       <div className="w-full h-screen flex items-center justify-center bg-gray-50 dark:bg-black">
@@ -205,5 +219,4 @@ export default function InteractionClient() {
       </Card>
     </div>
   );
-};
-
+}
