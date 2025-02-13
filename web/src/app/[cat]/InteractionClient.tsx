@@ -1,12 +1,13 @@
-"use client";
+'use client'
 
 import React, { useEffect, useState } from "react";
 import { Info } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { useAccount } from "wagmi";
 import { getPublicClient } from "@wagmi/core";
 import { config } from "@/utils/config";
 import { useSearchParams } from "next/navigation";
-import { CONTRIBUTION_ACCOUNTING_TOKEN_ABI } from "@/contractsABI/ContributionAccountingTokenABI";
+import CONTRIBUTION_ACCOUNTING_TOKEN_ABI from "@/contractsABI/ContributionAccountingTokenABI";
 
 interface TokenDetailsState {
   tokenName: string;
@@ -19,13 +20,13 @@ interface TokenDetailsState {
 }
 
 export default function InteractionClient() {
+
   const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const [tokenAddress, setTokenAddress] = useState<`0x${string}`>("0x0");
-   // Using a specific union type for chainId to ensure type safety
-  const [chainId, setChainId] = useState<1 | 5115 | 61 | 2001 | 534351 | 137 | undefined>(undefined);
+  const [chainId, setChainId] = useState<number>(0);
 
   const [tokenDetails, setTokenDetails] = useState<TokenDetailsState>({
     tokenName: "",
@@ -44,9 +45,7 @@ export default function InteractionClient() {
 
     if (vault && chain) {
       setTokenAddress(vault as `0x${string}`);
-      setChainId(
-        Number(chain) as 1 | 5115 | 61 | 2001 | 534351 | 137 | undefined
-      );
+      setChainId(Number(chain));
     }
   }, [searchParams]);
 
@@ -60,7 +59,7 @@ export default function InteractionClient() {
       setIsLoading(true);
       setError(null);
 
-      const publicClient = getPublicClient(config, { chainId });
+      const publicClient = getPublicClient(config as any, { chainId });
 
       if (!publicClient) {
         throw new Error(`No public client available for chain ${chainId}`);
@@ -207,4 +206,5 @@ export default function InteractionClient() {
       </Card>
     </div>
   );
-}
+};
+
