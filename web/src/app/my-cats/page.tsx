@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Layout from "@/components/Layout";
 import Link from "next/link";
 import { useAccount } from "wagmi";
@@ -55,7 +55,7 @@ export default function MyCATsPage() {
     factoryAddress: string
   ): Promise<CatDetails[]> => {
     try {
-      const publicClient = getPublicClient(config as any, {
+      const publicClient = getPublicClient(config, {
         chainId: parseInt(chainId),
       });
 
@@ -202,7 +202,7 @@ export default function MyCATsPage() {
               transition={{ duration: 0.5 }}
             >
               <p className="text-xl text-gray-700 dark:text-gray-300">
-                You don't own any CATs yet.
+                You don&apos;t own any CATs yet.
               </p>
               <Link
                 href="/create"

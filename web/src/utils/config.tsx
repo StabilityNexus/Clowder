@@ -1,12 +1,7 @@
 import {
-  arbitrum,
-  base,
   mainnet,
-  optimism,
   polygon,
   scrollSepolia,
-  sepolia,
-  Chain,
 } from "wagmi/chains";
 import {
   getDefaultConfig,

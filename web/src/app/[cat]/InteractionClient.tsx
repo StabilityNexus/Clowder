@@ -3,11 +3,10 @@
 import React, { useEffect, useState } from "react";
 import { Info } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { useAccount } from "wagmi";
 import { getPublicClient } from "@wagmi/core";
 import { config } from "@/utils/config";
 import { useSearchParams } from "next/navigation";
-import CONTRIBUTION_ACCOUNTING_TOKEN_ABI from "@/contractsABI/ContributionAccountingTokenABI";
+import { CONTRIBUTION_ACCOUNTING_TOKEN_ABI } from "@/contractsABI/ContributionAccountingTokenABI";
 
 interface TokenDetailsState {
   tokenName: string;
@@ -59,7 +58,7 @@ export default function InteractionClient() {
       setIsLoading(true);
       setError(null);
 
-      const publicClient = getPublicClient(config as any, { chainId });
+      const publicClient = getPublicClient(config, { chainId });
 
       if (!publicClient) {
         throw new Error(`No public client available for chain ${chainId}`);

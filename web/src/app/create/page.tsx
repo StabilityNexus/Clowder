@@ -108,7 +108,7 @@ export default function CreateCAT() {
         tokenSymbol,
       } = formData;
 
-      const tx = await writeContract(config as any, {
+      const tx = await writeContract(config, {
         address: ClowderVaultFactories[chainId],
         abi: CAT_FACTORY_ABI,
         functionName: "createCAT",

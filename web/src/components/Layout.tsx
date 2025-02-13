@@ -8,7 +8,6 @@ import Navbar from "./Navbar";
 import Footer from "@/components/Footer";
 import { WalletProvider } from "../hooks/WalletProvider";
 
-const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "HodlCoin",
