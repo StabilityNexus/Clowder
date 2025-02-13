@@ -183,13 +183,7 @@ export default function CreateCAT() {
                   <p className="text-gray-600 dark:text-gray-400 mb-4 text-lg">
                     Connect your wallet to create a new CAT
                   </p>
-                  <ConnectButton
-                    label={
-                      <span className="text-black dark:text-white">
-                        Connect Wallet
-                      </span>
-                    }
-                  />{" "}
+                  <ConnectButton></ConnectButton>
                 </motion.div>
               ) : chainId && !ClowderVaultFactories[chainId] ? (
                 <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6">
