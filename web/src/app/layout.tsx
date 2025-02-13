@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import { CatsProvider } from "@/hooks/CatsProvider";
+import { WalletConnectProvider } from "@/hooks/WalletConnectProvider";
 import { ThemeProvider } from "@/hooks/ThemeProvider";
 import { Toaster } from "react-hot-toast";
 import { WalletProvider } from "@/hooks/WalletProvider";

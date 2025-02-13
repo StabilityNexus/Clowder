@@ -1,3 +1,4 @@
+import { notFound } from "next/navigation";
 import InteractionClient from "./InteractionClient";
 import { Suspense } from "react";
 import Layout from "@/components/Layout";

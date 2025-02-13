@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { useWallet } from "@/hooks/WalletConnectProvider";
 import Image from "next/image";
 import { useAccount } from "wagmi";
 
