@@ -11,7 +11,7 @@ import { useRouter } from "next/navigation";
 import { ClowderVaultFactories } from "@/utils/address";
 import { useAccount } from "wagmi";
 import { config } from "@/utils/config";
-import { writeContract } from "@wagmi/core";
+import { Config, writeContract } from "@wagmi/core";
 import { CAT_FACTORY_ABI } from "@/contractsABI/CatFactoryABI";
 import {
   Card,
@@ -108,7 +108,7 @@ export default function CreateCAT() {
         tokenSymbol,
       } = formData;
 
-      const tx = await writeContract(config as any, {
+      const tx = await writeContract(config as Config, {
         address: ClowderVaultFactories[chainId],
         abi: CAT_FACTORY_ABI,
         functionName: "createCAT",
@@ -183,13 +183,10 @@ export default function CreateCAT() {
                   <p className="text-gray-600 dark:text-gray-400 mb-4 text-lg">
                     Connect your wallet to create a new CAT
                   </p>
+                  {/* Fixed the type error by passing a string directly to the `label` property of the `ConnectButton` component. */}
                   <ConnectButton
-                    label={
-                      <span className="text-black dark:text-white">
-                        Connect Wallet
-                      </span>
-                    }
-                  />{" "}
+                    label="Connect Wallet"
+                  />
                 </motion.div>
               ) : chainId && !ClowderVaultFactories[chainId] ? (
                 <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6">
