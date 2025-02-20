@@ -108,14 +108,18 @@ export default function CreateCAT() {
         tokenSymbol,
       } = formData;
 
+      const formattedMaxSupply = BigInt(maxSupply) * BigInt(1e18);
+      const formattedThresholdSupply = BigInt(thresholdSupply) * BigInt(1e18);
+      const formattedMaxExpansionRate = BigInt(maxExpansionRate) * BigInt(100);
+
       const tx = await writeContract(config, {
         address: ClowderVaultFactories[chainId],
         abi: CAT_FACTORY_ABI,
         functionName: "createCAT",
         args: [
-          Number.parseInt(maxSupply),
-          Number.parseInt(thresholdSupply),
-          maxExpansionRate.toString(),
+          formattedMaxSupply,
+          formattedThresholdSupply,
+          formattedMaxExpansionRate,
           tokenName,
           tokenSymbol,
         ],
