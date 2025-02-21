@@ -14,7 +14,7 @@ import Service_3 from "../images/Service_3.png"
 import catLight from "../images/Light_cat.png"
 import catDark from "../images/Dark_cat.png"
 import { useTheme } from "next-themes"
-import { faGithub, faDiscord, faTwitter, faTelegram } from "@fortawesome/free-brands-svg-icons"
+import { faGithub, faDiscord, faTelegram, faXTwitter} from "@fortawesome/free-brands-svg-icons"
 import { useAccount } from "wagmi"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { motion } from "framer-motion"
@@ -37,7 +37,7 @@ const contact_links = [
   { href: "https://github.com/StabilityNexus", icon: faGithub },
   { href: "https://discord.gg/YzDKeEfWtS", icon: faDiscord },
   { href: "https://t.me/StabilityNexus", icon: faTelegram },
-  { href: "https://x.com/StabilityNexus", icon: faTwitter },
+  { href: "https://x.com/StabilityNexus", icon: faXTwitter },
 ]
 
 export default function Home() {
@@ -73,7 +73,7 @@ export default function Home() {
       <div className="container mx-auto px-4 min-h-screen">
         {/* Hero Section */}
         <motion.section
-          className="flex flex-col items-center justify-center min-h-screen text-center"
+          className="flex flex-col items-center pt-64 min-h-screen text-center"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
@@ -126,11 +126,11 @@ export default function Home() {
               <div className="max-w-full">
                 <Button
                   onClick={() => router.push("/create")}
-                  className="mb-2 mr-2 bg-blue-500 hover:bg-blue-600 text-white"
+                  className="mb-2 mr-2 text-black dark:text-white"
                 >
                   Create CAT
                 </Button>
-                <Button onClick={() => setShowPopup(true)} className="bg-green-500 hover:bg-green-600 text-white">
+                <Button onClick={() => setShowPopup(true)} className="bg-gray-600 hover:bg-gray-700 text-white">
                   Use CAT
                 </Button>
               </div>

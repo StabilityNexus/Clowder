@@ -150,7 +150,7 @@ export default function InteractionClient() {
   }
 
   return (
-    <div className="w-full pt-14 bg-gray-50 dark:bg-black">
+    <div className="w-full pt-14">
       <Card className="w-full mt-8 mx-8">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
           <CardTitle className="text-xl font-bold">
