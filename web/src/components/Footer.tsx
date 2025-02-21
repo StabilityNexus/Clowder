@@ -2,7 +2,7 @@ import {
   faGithub,
   faDiscord,
   faTelegram,
-  faTwitter,
+  faXTwitter,
 } from "@fortawesome/free-brands-svg-icons";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import Image from "next/image";
@@ -13,7 +13,7 @@ const contact_links = [
   { href: "https://github.com/StabilityNexus", icon: faGithub },
   { href: "https://discord.gg/YzDKeEfWtS", icon: faDiscord },
   { href: "https://t.me/StabilityNexus", icon: faTelegram },
-  { href: "https://x.com/StabilityNexus", icon: faTwitter },
+  { href: "https://x.com/StabilityNexus", icon: faXTwitter },
 ];
 
 export default function Footer() {
