@@ -133,9 +133,16 @@ const Navbar = () => {
           <div className="hidden md:flex items-center space-x-4 ml-8">
             <ModeToggle />
           </div>
-          <div className="text-sm">
-            <ConnectButton />
-          </div>
+          {!address && (
+            <div className="text-sm bg-[#5cacc5] dark:bg-[#BA9901] rounded-[8px]">
+              <ConnectButton />
+            </div>
+          )}
+          {address && (
+            <div className="text-sm">
+              <ConnectButton />
+            </div>
+          )}
         </nav>
 
         {/* <ConnectButton/> */}
