@@ -121,7 +121,9 @@ export default function Home() {
             transition={{ duration: 0.5, delay: 0.8 }}
           >
             {!isWalletConnected ? (
-              <ConnectButton/>
+              <div className="bg-[#5cacc5] dark:bg-[#BA9901] rounded-[8px]">
+                <ConnectButton/>
+              </div>
             ) : (
               <div className="max-w-full">
                 <Button
@@ -238,7 +240,7 @@ export default function Home() {
 
       {/* Use CAT Dialog */}
       <Dialog open={showPopup} onOpenChange={setShowPopup}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>Enter CAT Details</DialogTitle>
             <DialogDescription>Provide the CAT address and select the network to use your CAT.</DialogDescription>
@@ -260,10 +262,10 @@ export default function Home() {
                 Network
               </label>
               <Select value={selectedChain} onValueChange={setSelectedChain}>
-                <SelectTrigger className="w-[280px]">
+                <SelectTrigger className="w-[280px] bg-black">
                   <SelectValue placeholder="Select network" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-black">
                   {supportedChains.map((chain) => (
                     <SelectItem key={chain.id} value={chain.id}>
                       {chain.name}
@@ -273,16 +275,19 @@ export default function Home() {
               </Select>
             </div>
           </div>
-          <div className="flex justify-end space-x-4">
-            <Button onClick={() => setShowPopup(false)}>
-              Cancel
-            </Button>
+          <div className="flex justify-center">
             <Button onClick={handleUseCAT} disabled={!catAddress.trim() || !selectedChain}>
-              Submit
+              Go to CAT
             </Button>
           </div>
         </DialogContent>
       </Dialog>
+      {showPopup && (
+        <div
+          className="fixed top-0 left-0 w-full h-full bg-black bg-opacity-80 z-50"
+          onClick={() => setShowPopup(false)}
+        />
+      )}
     </Layout>
   )
 }
