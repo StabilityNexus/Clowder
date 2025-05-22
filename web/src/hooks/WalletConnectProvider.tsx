@@ -2,7 +2,7 @@
 
 import { WalletContextProps } from "@/types/walletContext";
 import detectEthereumProvider from "@metamask/detect-provider";
-import React, { createContext, useState, useEffect } from "react";
+import React, { createContext, useState, useEffect, useCallback } from "react";
 import CAT_FACTORY_ABI from "../contractsABI/CatFactoryABI.js";
 import { CATS_FACTORY_ADDRESS } from "../constants.js";
 import Web3 from "web3";
@@ -29,7 +29,7 @@ export function WalletConnectProvider({
   // eslint-disable-next-line  @typescript-eslint/no-explicit-any
   const [catsContractFactoryInstance, setCatsContractFactoryInstance] = useState<any>(null);
 
-  const initContracts = async () => {
+  const initContracts = useCallback(async () => {
     if (!web3) return;
     const catsContractFactoryInstance = new web3.eth.Contract(
       // eslint-disable-next-line  @typescript-eslint/no-explicit-any
@@ -37,12 +37,12 @@ export function WalletConnectProvider({
       CATS_FACTORY_ADDRESS
     );
     setCatsContractFactoryInstance(catsContractFactoryInstance);
-  };
+  }, [web3]);
 
   useEffect(() => {
     if (!web3) return;
     initContracts();
-  }, [isLoading]);
+  }, [web3, initContracts]);
 
   useEffect(() => {
     const init = async () => {
