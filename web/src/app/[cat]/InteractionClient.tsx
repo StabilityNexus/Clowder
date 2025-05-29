@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Info, Coins, Settings, ArrowUpRight, ArrowDownRight, Lock, Unlock } from "lucide-react";
+import { Info, Coins, Settings, ArrowUpRight, ArrowDownRight, Unlock } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { getPublicClient } from "@wagmi/core";
 import { config } from "@/utils/config";
@@ -10,7 +10,6 @@ import { CONTRIBUTION_ACCOUNTING_TOKEN_ABI } from "@/contractsABI/ContributionAc
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { parseEther } from "viem";
 
@@ -36,8 +35,6 @@ export default function InteractionClient() {
   const [newMaxSupply, setNewMaxSupply] = useState("");
   const [newThresholdSupply, setNewThresholdSupply] = useState("");
   const [newMaxExpansionRate, setNewMaxExpansionRate] = useState("");
-  const [transferAmount, setTransferAmount] = useState("");
-  const [transferTo, setTransferTo] = useState("");
 
   const [tokenAddress, setTokenAddress] = useState<`0x${string}`>("0x0");
   const [chainId, setChainId] = useState<SupportedChainId | null>(null);
