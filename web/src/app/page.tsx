@@ -269,7 +269,7 @@ export default function Home() {
 
       {/* Use CAT Dialog */}
       <Dialog open={showPopup} onOpenChange={setShowPopup}>
-        <DialogContent className="sm:max-w-[600px] bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-800">
+        <DialogContent className="sm:max-w-[600px] bg-white rounded-2xl dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-800 overflow-hidden">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold text-gray-900 dark:text-gray-100">
               Use Existing CAT
@@ -289,7 +289,7 @@ export default function Home() {
                   value={catAddress}
                   onChange={(e) => setCatAddress(e.target.value)}
                   placeholder="0x..."
-                  className="w-full h-12 text-lg font-mono bg-gray-50 dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-blue-500"
+                  className="w-full h-12 text-lg font-mono bg-gray-50 dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-blue-500 rounded-xl"
                 />
               </div>
               <div className="space-y-2">
@@ -297,15 +297,15 @@ export default function Home() {
                   Network
                 </label>
                 <Select value={selectedChain} onValueChange={setSelectedChain}>
-                  <SelectTrigger className="w-full h-12 text-lg text-black bg-gray-50 dark:bg-gray-800 dark:text-gray-300 border-2 border-gray-200 dark:border-gray-700">
+                  <SelectTrigger className="w-full h-12 text-lg text-black bg-gray-50 dark:bg-gray-800 dark:text-gray-300 border-2 border-gray-200 dark:border-gray-700 rounded-xl">
                     <SelectValue placeholder="Select network" />
                   </SelectTrigger>
-                  <SelectContent className="bg-gray-50 dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700">
+                  <SelectContent className="bg-gray-50 dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl">
                     {supportedChains.map((chain) => (
                       <SelectItem 
                         key={chain.id} 
                         value={chain.id}
-                        className="text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                        className="text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
                       >
                         {chain.name}
                       </SelectItem>
@@ -318,14 +318,14 @@ export default function Home() {
           <div className="flex justify-end space-x-4">
             <Button
               onClick={() => setShowPopup(false)}
-              className="h-12 px-6 text-lg border-2 border-gray-200 dark:border-gray-700 bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800"
+              className="h-12 px-6 text-lg border-2 border-gray-200 dark:bg-gray-200 dark:border-gray-700 bg-transparent hover:bg-gray-100 dark:hover:bg-gray-400 rounded-xl"
             >
               Cancel
             </Button>
             <Button
               onClick={handleUseCAT}
               disabled={!catAddress.trim() || !selectedChain}
-              className="h-12 px-6 text-lg bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white"
+              className="h-12 px-6 text-lg bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl"
             >
               Continue
             </Button>
@@ -334,7 +334,7 @@ export default function Home() {
       </Dialog>
       {showPopup && (
         <div
-          className="fixed top-0 left-0 w-full h-full bg-black bg-opacity-80 z-50"
+          className="fixed top-0 left-0 w-full h-full bg-black bg-opacity-50"
           onClick={() => setShowPopup(false)}
         />
       )}
