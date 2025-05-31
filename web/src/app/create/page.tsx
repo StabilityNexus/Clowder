@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -11,7 +11,7 @@ import { useRouter } from "next/navigation";
 import { ClowderVaultFactories } from "@/utils/address";
 import { useAccount } from "wagmi";
 import { config } from "@/utils/config";
-import { writeContract } from "@wagmi/core";
+import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { CAT_FACTORY_ABI } from "@/contractsABI/CatFactoryABI";
 import {
   Card,
@@ -22,6 +22,8 @@ import {
 } from "@/components/ui/card";
 import { Info, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
+import { showTransactionToast } from "@/components/ui/transaction-toast";
+
 interface DeployContractProps {
   tokenName: string;
   tokenSymbol: string;
@@ -67,6 +69,7 @@ const fields = [
     description: "Maximum percentage the supply can expand (1-100)",
   },
 ];
+
 export default function CreateCAT() {
   const [formData, setFormData] = useState<DeployContractProps>({
     tokenName: "",
@@ -79,6 +82,11 @@ export default function CreateCAT() {
 
   const { address, chainId } = useAccount();
   const router = useRouter();
+
+  const { writeContract: deployCAT, data: deployData } = useWriteContract();
+  const { isLoading: isDeployingTx } = useWaitForTransactionReceipt({
+    hash: deployData,
+  });
 
   const getTransactionHistory = () => {
     const history = localStorage.getItem("transactionHistory");
@@ -112,7 +120,7 @@ export default function CreateCAT() {
       const formattedThresholdSupply = BigInt(thresholdSupply) * BigInt(1e18);
       const formattedMaxExpansionRate = BigInt(maxExpansionRate) * BigInt(100);
 
-      const tx = await writeContract(config, {
+      deployCAT({
         address: ClowderVaultFactories[chainId],
         abi: CAT_FACTORY_ABI,
         functionName: "createCAT",
@@ -124,27 +132,40 @@ export default function CreateCAT() {
           tokenSymbol,
         ],
       });
+    } catch (error) {
+      console.error("Error deploying CAT:", error);
+      showTransactionToast({
+        hash: "0x0" as `0x${string}`,
+        chainId: config.state.chainId,
+        success: false,
+        message: "Failed to deploy CAT contract",
+      });
+      setIsDeploying(false);
+    }
+  };
 
+  useEffect(() => {
+    if (deployData) {
       const txDetails = {
-        tokenName,
-        tokenSymbol,
-        maxSupply,
-        thresholdSupply,
-        maxExpansionRate,
-        transactionHash: tx,
+        tokenName: formData.tokenName,
+        tokenSymbol: formData.tokenSymbol,
+        maxSupply: formData.maxSupply,
+        thresholdSupply: formData.thresholdSupply,
+        maxExpansionRate: formData.maxExpansionRate,
+        transactionHash: deployData,
         timestamp: new Date().toISOString(),
       };
 
       saveTransaction(txDetails);
-      toast.success("CAT contract deployed successfully!");
+      showTransactionToast({
+        hash: deployData,
+        chainId: config.state.chainId,
+        message: "CAT contract deployed successfully!",
+      });
       router.push("/my-cats");
-    } catch (error) {
-      console.error("Error deploying CAT:", error);
-      toast.error("Failed to deploy CAT contract");
-    } finally {
       setIsDeploying(false);
     }
-  };
+  }, [deployData, formData, router]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -251,9 +272,9 @@ export default function CreateCAT() {
                     <Button
                       type="submit"
                       className="w-full h-12 text-lg font-medium transition-all duration-200 hover:scale-[1.02]"
-                      disabled={isDeploying}
+                      disabled={isDeploying || isDeployingTx}
                     >
-                      {isDeploying ? (
+                      {isDeploying || isDeployingTx ? (
                         <span className="flex items-center justify-center">
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                           Deploying...
