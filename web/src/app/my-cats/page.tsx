@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Layout from "@/components/Layout";
 import Link from "next/link";
-import { useAccount } from "wagmi";
+import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { ClowderVaultFactories } from "@/utils/address";
 import { config } from "@/utils/config";
 import { getPublicClient } from "@wagmi/core";
@@ -12,6 +12,7 @@ import detectEthereumProvider from "@metamask/detect-provider";
 import { CONTRIBUTION_ACCOUNTING_TOKEN_ABI } from "@/contractsABI/ContributionAccountingTokenABI";
 import { motion } from "framer-motion";
 import { Loader2, AlertCircle } from "lucide-react";
+import { showTransactionToast } from "@/components/ui/transaction-toast";
 
 // Define supported chain IDs
 type SupportedChainId = 1 | 137 | 534351 | 5115 | 61 | 2001;
@@ -37,6 +38,21 @@ export default function MyCATsPage() {
   const [error, setError] = useState<string | null>(null);
   const { address } = useAccount();
 
+  const { writeContract: fetchCATs, data: fetchData } = useWriteContract();
+  const { isLoading: isFetching } = useWaitForTransactionReceipt({
+    hash: fetchData,
+  });
+
+  useEffect(() => {
+    if (fetchData) {
+      showTransactionToast({
+        hash: fetchData,
+        chainId: config.state.chainId,
+        message: "CATs fetched successfully!",
+      });
+    }
+  }, [fetchData]);
+
   const fetchCATsFromAllChains = async () => {
     try {
       setIsLoading(true);
@@ -55,6 +71,12 @@ export default function MyCATsPage() {
       setOwnedCATs(allCATs);
     } catch (error) {
       console.error("Error fetching CATs:", error);
+      showTransactionToast({
+        hash: "0x0" as `0x${string}`,
+        chainId: config.state.chainId,
+        success: false,
+        message: "Failed to fetch CATs. Please try again later.",
+      });
       setError("Failed to fetch CATs. Please try again later.");
     } finally {
       setIsLoading(false);
