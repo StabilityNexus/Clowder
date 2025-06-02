@@ -19,6 +19,8 @@ import { useAccount } from "wagmi"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { motion } from "framer-motion"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { showTransactionToast } from "@/components/ui/transaction-toast"
+// import { config } from "@/utils/config"
 
 const services = [
   { image: Service_1, alt: "Semi-Transferable", description: "Semi-Transferable" },
@@ -51,8 +53,29 @@ export default function Home() {
   const [selectedChain, setSelectedChain] = useState("")
 
   const handleUseCAT = () => {
-    if (catAddress.trim()) {
-      router.push(`/cat/${catAddress}`)
+    if (catAddress.trim() && selectedChain) {
+      try {
+        // Validate address format
+        if (!/^0x[a-fA-F0-9]{40}$/.test(catAddress)) {
+          showTransactionToast({
+            hash: "0x0" as `0x${string}`,
+            chainId: Number(selectedChain),
+            success: false,
+            message: "Invalid CAT address format",
+          });
+          return;
+        }
+
+        router.push(`/c?vault=${catAddress}&chainId=${selectedChain}`);
+        setShowPopup(false);
+      } catch (error) {
+        showTransactionToast({
+          hash: "0x0" as `0x${string}`,
+          chainId: Number(selectedChain),
+          success: false,
+          message: "Failed to process CAT address",
+        });
+      }
     }
   }
 
@@ -70,10 +93,10 @@ export default function Home() {
 
   return (
     <Layout>
-      <div className="container mx-auto px-4 min-h-screen">
+      <div className="container mx-auto px-4">
         {/* Hero Section */}
         <motion.section
-          className="flex flex-col items-center pt-64 min-h-screen text-center"
+          className="flex flex-col items-center pt-48 min-h-screen text-center"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
@@ -126,6 +149,12 @@ export default function Home() {
               </div>
             ) : (
               <div className="max-w-full">
+                <Button
+                  onClick={() => router.push("/my-cats")}
+                  className="mb-2 mr-2 text-black dark:text-white"
+                >
+                  My CAT's
+                </Button>
                 <Button
                   onClick={() => router.push("/create")}
                   className="mb-2 mr-2 text-black dark:text-white"
@@ -240,51 +269,72 @@ export default function Home() {
 
       {/* Use CAT Dialog */}
       <Dialog open={showPopup} onOpenChange={setShowPopup}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[600px] bg-white rounded-2xl dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-800 overflow-hidden">
           <DialogHeader>
-            <DialogTitle>Enter CAT Details</DialogTitle>
-            <DialogDescription>Provide the CAT address and select the network to use your CAT.</DialogDescription>
+            <DialogTitle className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+              Use Existing CAT
+            </DialogTitle>
+            <DialogDescription className="text-gray-600 dark:text-gray-400">
+              Enter the CAT address and select the network to interact with your token.
+            </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <label htmlFor="catAddress" className="text-right">
-                CAT Address
-              </label>
-              <Input
-                id="catAddress"
-                value={catAddress}
-                onChange={(e) => setCatAddress(e.target.value)}
-                className="col-span-3"
-              />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <label htmlFor="network" className="text-right">
-                Network
-              </label>
-              <Select value={selectedChain} onValueChange={setSelectedChain}>
-                <SelectTrigger className="w-[280px] bg-black">
-                  <SelectValue placeholder="Select network" />
-                </SelectTrigger>
-                <SelectContent className="bg-black">
-                  {supportedChains.map((chain) => (
-                    <SelectItem key={chain.id} value={chain.id}>
-                      {chain.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <div className="grid gap-6 py-6">
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label htmlFor="catAddress" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  CAT Address
+                </label>
+                <Input
+                  id="catAddress"
+                  value={catAddress}
+                  onChange={(e) => setCatAddress(e.target.value)}
+                  placeholder="0x..."
+                  className="w-full h-12 text-lg font-mono bg-gray-50 dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-blue-500 rounded-xl"
+                />
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="network" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Network
+                </label>
+                <Select value={selectedChain} onValueChange={setSelectedChain}>
+                  <SelectTrigger className="w-full h-12 text-lg text-black bg-gray-50 dark:bg-gray-800 dark:text-gray-300 border-2 border-gray-200 dark:border-gray-700 rounded-xl">
+                    <SelectValue placeholder="Select network" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-gray-50 dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl">
+                    {supportedChains.map((chain) => (
+                      <SelectItem 
+                        key={chain.id} 
+                        value={chain.id}
+                        className="text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                      >
+                        {chain.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
-          <div className="flex justify-center">
-            <Button onClick={handleUseCAT} disabled={!catAddress.trim() || !selectedChain}>
-              Go to CAT
+          <div className="flex justify-end space-x-4">
+            <Button
+              onClick={() => setShowPopup(false)}
+              className="h-12 px-6 text-lg border-2 border-gray-200 dark:bg-gray-200 dark:border-gray-700 bg-transparent hover:bg-gray-100 dark:hover:bg-gray-400 rounded-xl"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUseCAT}
+              disabled={!catAddress.trim() || !selectedChain}
+              className="h-12 px-6 text-lg bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl"
+            >
+              Continue
             </Button>
           </div>
         </DialogContent>
       </Dialog>
       {showPopup && (
         <div
-          className="fixed top-0 left-0 w-full h-full bg-black bg-opacity-80 z-50"
+          className="fixed top-0 left-0 w-full h-full bg-black bg-opacity-50"
           onClick={() => setShowPopup(false)}
         />
       )}

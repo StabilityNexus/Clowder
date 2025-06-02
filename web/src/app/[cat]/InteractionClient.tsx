@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { parseEther } from "viem";
+import { showTransactionToast } from "@/components/ui/transaction-toast";
 
 // Define supported chain IDs
 type SupportedChainId = 1 | 137 | 534351 | 5115 | 61 | 2001;
@@ -35,6 +36,8 @@ export default function InteractionClient() {
   const [newMaxSupply, setNewMaxSupply] = useState("");
   const [newThresholdSupply, setNewThresholdSupply] = useState("");
   const [newMaxExpansionRate, setNewMaxExpansionRate] = useState("");
+  const [transferRestricted, setTransferRestricted] = useState<boolean>(true);
+
 
   const [tokenAddress, setTokenAddress] = useState<`0x${string}`>("0x0");
   const [chainId, setChainId] = useState<SupportedChainId | null>(null);
@@ -126,6 +129,14 @@ export default function InteractionClient() {
         transactionHash: tokenAddress,
         timestamp: new Date().toISOString(),
       });
+
+      const restricted = (await publicClient.readContract({
+        address: tokenAddress,
+        abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
+        functionName: "transferRestricted",
+      })) as boolean;
+      setTransferRestricted(restricted);
+      
     } catch (error) {
       console.error("Error fetching token details:", error);
       setError("Failed to fetch token details");
@@ -142,13 +153,9 @@ export default function InteractionClient() {
 
   // Contract write hooks
   const { writeContract: mint, data: mintData } = useWriteContract();
-
   const { writeContract: reduceMaxSupply, data: reduceMaxSupplyData } = useWriteContract();
-
   const { writeContract: reduceThresholdSupply, data: reduceThresholdSupplyData } = useWriteContract();
-
   const { writeContract: reduceMaxExpansionRate, data: reduceMaxExpansionRateData } = useWriteContract();
-
   const { writeContract: disableTransferRestriction, data: disableTransferRestrictionData } = useWriteContract();
 
   // Transaction hooks
@@ -171,6 +178,56 @@ export default function InteractionClient() {
   const { isLoading: isDisablingTransferRestriction } = useWaitForTransactionReceipt({
     hash: disableTransferRestrictionData,
   });
+
+  useEffect(() => {
+    if (mintData) {
+      showTransactionToast({
+        hash: mintData,
+        chainId: chainId!,
+        message: "Tokens minted successfully!",
+      });
+    }
+  }, [mintData, chainId]);
+
+  useEffect(() => {
+    if (reduceMaxSupplyData) {
+      showTransactionToast({
+        hash: reduceMaxSupplyData,
+        chainId: chainId!,
+        message: "Max supply updated successfully!",
+      });
+    }
+  }, [reduceMaxSupplyData, chainId]);
+
+  useEffect(() => {
+    if (reduceThresholdSupplyData) {
+      showTransactionToast({
+        hash: reduceThresholdSupplyData,
+        chainId: chainId!,
+        message: "Threshold supply updated successfully!",
+      });
+    }
+  }, [reduceThresholdSupplyData, chainId]);
+
+  useEffect(() => {
+    if (reduceMaxExpansionRateData) {
+      showTransactionToast({
+        hash: reduceMaxExpansionRateData,
+        chainId: chainId!,
+        message: "Max expansion rate updated successfully!",
+      });
+    }
+  }, [reduceMaxExpansionRateData, chainId]);
+
+  useEffect(() => {
+    if (disableTransferRestrictionData) {
+      showTransactionToast({
+        hash: disableTransferRestrictionData,
+        chainId: chainId!,
+        message: "Transfer restriction disabled successfully!",
+      });
+    }
+  }, [disableTransferRestrictionData, chainId]);
 
   if (isLoading) {
     return (
@@ -195,7 +252,7 @@ export default function InteractionClient() {
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Header Section */}
         <div className="text-center mb-12">
-          <h1 className="text-3xl text-gray-600 dark:text-gray-400">
+          <h1 className="text-4xl text-gray-800 font-bold dark:text-gray-400">
             {tokenDetails.tokenSymbol} Token Management
           </h1>
         </div>
@@ -261,7 +318,7 @@ export default function InteractionClient() {
           <CardContent className="pt-6">
             <div className="max-w-md mx-auto space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="mintAmount" className="text-lg">Amount to Mint</Label>
+                <Label htmlFor="mintAmount" className="text-lg font-bold">Amount to Mint</Label>
                 <Input
                   id="mintAmount"
                   type="number"
@@ -299,7 +356,7 @@ export default function InteractionClient() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="newMaxSupply" className="text-lg">New Max Supply</Label>
+                  <Label htmlFor="newMaxSupply" className="text-lg font-bold">New Max Supply</Label>
                   <Input
                     id="newMaxSupply"
                     type="number"
@@ -323,7 +380,7 @@ export default function InteractionClient() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="newThresholdSupply" className="text-lg">New Threshold Supply</Label>
+                  <Label htmlFor="newThresholdSupply" className="text-lg font-bold">New Threshold Supply</Label>
                   <Input
                     id="newThresholdSupply"
                     type="number"
@@ -349,7 +406,7 @@ export default function InteractionClient() {
 
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="newMaxExpansionRate" className="text-lg">New Max Expansion Rate (%)</Label>
+                  <Label htmlFor="newMaxExpansionRate" className="text-lg font-bold">New Max Expansion Rate (%)</Label>
                   <Input
                     id="newMaxExpansionRate"
                     type="number"
@@ -372,27 +429,36 @@ export default function InteractionClient() {
                   </Button>
                 </div>
 
-                <div className="space-y-2">
-                  <Label className="text-lg">Transfer Restriction</Label>
-                  <Button
-                    onClick={() => disableTransferRestriction({
-                      abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
-                      address: tokenAddress,
-                      functionName: "disableTransferRestriction"
-                    })}
-                    disabled={isDisablingTransferRestriction}
-                    className="w-full h-12 text-lg"
-                  >
-                    {isDisablingTransferRestriction ? (
-                      "Disabling..."
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <Unlock className="h-5 w-5" />
-                        Disable Transfer Restriction
-                      </div>
-                    )}
-                  </Button>
-                </div>
+                {transferRestricted ? (
+                  <div className="space-y-2">
+                    <Label className="text-lg font-bold">Transfer Restriction</Label>
+                    <Button
+                      onClick={() =>
+                        disableTransferRestriction({
+                          abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
+                          address: tokenAddress,
+                          functionName: "disableTransferRestriction",
+                        })
+                      }
+                      disabled={isDisablingTransferRestriction}
+                      className="w-full h-12 text-lg"
+                    >
+                      {isDisablingTransferRestriction ? (
+                        "Disabling..."
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <Unlock className="h-5 w-5" />
+                          Disable Transfer Restriction
+                        </div>
+                      )}
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Label className="text-lg font-bold">Transfer Restriction</Label>
+                    <p className="text-lg">Transfer restriction is already disabled</p>
+                  </div>
+                )}
               </div>
             </div>
           </CardContent>
