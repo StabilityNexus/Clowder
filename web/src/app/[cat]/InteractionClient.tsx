@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { Info, Coins, Settings, ArrowUpRight, ArrowDownRight, Unlock } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { getPublicClient } from "@wagmi/core";
@@ -58,32 +58,45 @@ export default function InteractionClient() {
   // Add new state for transaction signing
   const [isSigning, setIsSigning] = useState(false);
 
+  // Type guard for chain ID validation
+  const isValidChainId = useCallback((chainId: number): chainId is SupportedChainId => {
+    const validChainIds: SupportedChainId[] = [1, 137, 534351, 5115, 61, 2001];
+    return validChainIds.includes(chainId as SupportedChainId);
+  }, []);
+
   // Get vault address and chainId from URL parameters
   useEffect(() => {
     const vault = searchParams.get("vault");
     const chain = searchParams.get("chainId");
 
-    if (vault && chain) {
-      setTokenAddress(vault as `0x${string}`);
-      const parsedChainId = Number(chain) as SupportedChainId;
-      // Validate chain ID
-      if (isValidChainId(parsedChainId)) {
-        setChainId(parsedChainId);
-      } else {
-        setError(`Unsupported chain ID: ${chain}`);
-      }
+    if (!vault || !chain) {
+      setError("Missing vault address or chain ID");
+      setIsLoading(false);
+      return;
     }
-  }, [searchParams]);
 
-  // Type guard for chain ID validation
-  const isValidChainId = (chainId: number): chainId is SupportedChainId => {
-    const validChainIds: SupportedChainId[] = [1, 137, 534351, 5115, 61, 2001];
-    return validChainIds.includes(chainId as SupportedChainId);
-  };
+    try {
+      if (!/^0x[a-fA-F0-9]{40}$/.test(vault)) {
+        throw new Error("Invalid vault address format");
+      }
 
-  const getTokenDetails = async () => {
+      const parsedChainId = Number(chain);
+      if (!isValidChainId(parsedChainId)) {
+        throw new Error(`Unsupported chain ID: ${chain}`);
+      }
+
+      setTokenAddress(vault as `0x${string}`);
+      setChainId(parsedChainId);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Invalid parameters");
+      setIsLoading(false);
+    }
+  }, [searchParams, isValidChainId]);
+
+  const getTokenDetails = useCallback(async () => {
     if (!tokenAddress || !chainId) {
       setError("Invalid token address or chain ID");
+      setIsLoading(false);
       return;
     }
 
@@ -92,7 +105,6 @@ export default function InteractionClient() {
       setError(null);
 
       const publicClient = getPublicClient(config, { chainId });
-
       if (!publicClient) {
         throw new Error(`No public client available for chain ${chainId}`);
       }
@@ -126,6 +138,10 @@ export default function InteractionClient() {
           }),
         ])) as [string, string, bigint, bigint, bigint];
 
+      if (!name || !symbol) {
+        throw new Error("Invalid token contract");
+      }
+
       setTokenDetails({
         tokenName: name,
         tokenSymbol: symbol,
@@ -145,11 +161,11 @@ export default function InteractionClient() {
       
     } catch (error) {
       console.error("Error fetching token details:", error);
-      setError("Failed to fetch token details");
+      setError(error instanceof Error ? error.message : "Failed to fetch token details");
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [tokenAddress, chainId]);
 
   useEffect(() => {
     if (tokenAddress && chainId) {
