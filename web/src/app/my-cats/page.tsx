@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Layout from "@/components/Layout";
 import Link from "next/link";
-import { useAccount, useWriteContract } from "wagmi";
+import { useAccount } from "wagmi";
 import { ClowderVaultFactories } from "@/utils/address";
 import { config } from "@/utils/config";
 import { getPublicClient } from "@wagmi/core";
