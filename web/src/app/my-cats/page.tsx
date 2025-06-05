@@ -52,9 +52,6 @@ export default function MyCATsPage() {
   const { address } = useAccount();
 
   const { writeContract: fetchCATs, data: fetchData } = useWriteContract();
-  const { isLoading: isFetching } = useWaitForTransactionReceipt({
-    hash: fetchData,
-  });
 
   useEffect(() => {
     if (fetchData) {
