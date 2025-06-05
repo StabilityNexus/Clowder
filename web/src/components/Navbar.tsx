@@ -42,7 +42,7 @@ const Navbar = () => {
                 priority
               />
               <h1
-                className="text-4xl font-bold ml-[-10px] pb-2 dark:text-[#BA9901]"
+                className="text-4xl font-bold ml-[-10px] pb-2 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-blue-500 dark:from-[#FFD600] dark:to-blue-400"
                 style={{
                   fontFamily: "var(--font-bebas-nueue)",
                   marginLeft: "-58px",
@@ -123,12 +123,6 @@ const Navbar = () => {
               <Avatar />
             </Link>
           )}
-          <Link href="/create" className="hover:text-blue-600">
-            CREATE CAT
-          </Link>
-          <Link href="/#Contact" className="hover:text-blue-600">
-            ABOUT US
-          </Link>
           {/* Connect Wallet and Light/Dark Toggle for Desktop */}
           <div className="hidden md:flex items-center space-x-4 ml-8">
             <ModeToggle />

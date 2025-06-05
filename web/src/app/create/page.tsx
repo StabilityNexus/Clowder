@@ -20,9 +20,12 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { Info, Loader2 } from "lucide-react";
+import { Info, Loader2, ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
 import { showTransactionToast } from "@/components/ui/transaction-toast";
+import Link from "next/link";
+import { LoadingState } from "@/components/ui/loading-state";
+import { ButtonLoadingState } from "@/components/ui/button-loading-state";
 
 interface DeployContractProps {
   tokenName: string;
@@ -32,6 +35,13 @@ interface DeployContractProps {
   maxExpansionRate: string;
 }
 
+interface FieldValidation {
+  [key: string]: {
+    isValid: boolean;
+    errorMessage: string;
+  };
+}
+
 const fields = [
   {
     id: "tokenName",
@@ -39,6 +49,10 @@ const fields = [
     type: "text",
     placeholder: "My Token",
     description: "The name of your token",
+    validate: (value: string) => ({
+      isValid: value.length >= 3 && value.length <= 32,
+      errorMessage: "Token name must be between 3 and 32 characters"
+    })
   },
   {
     id: "tokenSymbol",
@@ -46,6 +60,10 @@ const fields = [
     type: "text",
     placeholder: "TKN",
     description: "A short identifier for your token (2-4 characters)",
+    validate: (value: string) => ({
+      isValid: /^[A-Z]{2,4}$/.test(value),
+      errorMessage: "Symbol must be 2-4 uppercase letters"
+    })
   },
   {
     id: "maxSupply",
@@ -53,6 +71,10 @@ const fields = [
     type: "number",
     placeholder: "1000000",
     description: "The maximum number of tokens that can exist",
+    validate: (value: string) => ({
+      isValid: /^\d+$/.test(value) && parseInt(value) > 0,
+      errorMessage: "Maximum supply must be a positive number"
+    })
   },
   {
     id: "thresholdSupply",
@@ -60,6 +82,12 @@ const fields = [
     type: "number",
     placeholder: "500000",
     description: "The supply threshold that triggers expansion",
+    validate: (value: string, formData: DeployContractProps) => ({
+      isValid: /^\d+$/.test(value) && 
+               parseInt(value) > 0 && 
+               parseInt(value) < parseInt(formData.maxSupply),
+      errorMessage: "Threshold must be a positive number less than maximum supply"
+    })
   },
   {
     id: "maxExpansionRate",
@@ -67,6 +95,12 @@ const fields = [
     type: "number",
     placeholder: "5",
     description: "Maximum percentage the supply can expand (1-100)",
+    validate: (value: string) => ({
+      isValid: /^\d+$/.test(value) && 
+               parseInt(value) >= 1 && 
+               parseInt(value) <= 100,
+      errorMessage: "Expansion rate must be between 1 and 100"
+    })
   },
 ];
 
@@ -79,6 +113,9 @@ export default function CreateCAT() {
     maxExpansionRate: "",
   });
   const [isDeploying, setIsDeploying] = useState(false);
+  const [validation, setValidation] = useState<FieldValidation>({});
+  const [showInfo, setShowInfo] = useState<{ [key: string]: boolean }>({});
+  const [isSigning, setIsSigning] = useState(false);
 
   const { address, chainId } = useAccount();
   const router = useRouter();
@@ -102,6 +139,7 @@ export default function CreateCAT() {
   const deployContract = async () => {
     try {
       setIsDeploying(true);
+      setIsSigning(true);
       const chainId = config.state.chainId;
       if (!ClowderVaultFactories[chainId]) {
         toast.error("Contract factory instance not available");
@@ -120,7 +158,7 @@ export default function CreateCAT() {
       const formattedThresholdSupply = BigInt(thresholdSupply) * BigInt(1e18);
       const formattedMaxExpansionRate = BigInt(maxExpansionRate) * BigInt(100);
 
-      deployCAT({
+      await deployCAT({
         address: ClowderVaultFactories[chainId],
         abi: CAT_FACTORY_ABI,
         functionName: "createCAT",
@@ -141,6 +179,7 @@ export default function CreateCAT() {
         message: "Failed to deploy CAT contract",
       });
       setIsDeploying(false);
+      setIsSigning(false);
     }
   };
 
@@ -168,127 +207,165 @@ export default function CreateCAT() {
   }, [deployData, formData, router]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+
+    // Validate the field
+    const field = fields.find(f => f.id === name);
+    if (field?.validate) {
+      const validationResult = field.validate(value, formData);
+      setValidation(prev => ({
+        ...prev,
+        [name]: validationResult
+      }));
+    }
+  };
+
+  const toggleInfo = (fieldId: string) => {
+    setShowInfo(prev => ({
+      ...prev,
+      [fieldId]: !prev[fieldId]
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    await deployContract();
+    
+    // Validate all fields before submission
+    const newValidation: FieldValidation = {};
+    let isValid = true;
+
+    fields.forEach(field => {
+      if (field.validate) {
+        const result = field.validate(formData[field.id as keyof DeployContractProps], formData);
+        newValidation[field.id] = result;
+        if (!result.isValid) isValid = false;
+      }
+    });
+
+    setValidation(newValidation);
+
+    if (isValid) {
+      await deployContract();
+    }
   };
 
   return (
     <Layout>
-      <div className="min-h-screen py-12 px-4">
-        <motion.div
-          className="max-w-3xl mx-auto"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <Card className="border-2 shadow-lg">
-            <CardHeader className="space-y-1">
-              <CardTitle className="text-4xl font-extrabold text-center text-[#5cacc5] dark:text-[#BA9901]">
-                Create CAT
-              </CardTitle>
-              <CardDescription className="text-center text-lg text-gray-600 dark:text-gray-400">
-                Deploy a new Contribution Accounting Token
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {!address ? (
-                <motion.div
-                  className="flex flex-col items-center space-y-4 p-6"
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.3 }}
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-full max-w-3xl mx-auto px-4 py-12">
+          {isDeploying || isDeployingTx ? (
+            <LoadingState
+              title="Creating Your CAT"
+              message="Please wait while we deploy your Contribution Accounting Token..."
+            />
+          ) : (
+            <motion.div
+              className="rounded-3xl shadow-2xl bg-white/70 dark:bg-[#1a1400]/80 border border-white/30 dark:border-yellow-400/20 backdrop-blur-lg p-8"
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7 }}
+            >
+              <Link href="/my-cats">
+                <motion.button
+                  className="flex items-center space-x-2 text-gray-700 hover:text-blue-600 dark:text-yellow-300 dark:hover:text-yellow-400 mb-8 font-semibold"
+                  whileHover={{ x: -5 }}
+                  whileTap={{ scale: 0.95 }}
                 >
-                  <p className="text-gray-600 dark:text-gray-400 mb-4 text-lg">
-                    Connect your wallet to create a new CAT
+                  <ArrowLeft className="w-5 h-5" />
+                  <span>Back to My CATs</span>
+                </motion.button>
+              </Link>
+              <h1 className="text-4xl md:text-5xl font-extrabold text-center mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-blue-200 dark:from-[#FFD600] dark:to-white drop-shadow-lg">
+                Create CAT
+              </h1>
+              {!address ? (
+                <div className="flex flex-col items-center justify-center py-8">
+                  <p className="text-lg text-gray-600 dark:text-yellow-200 mb-6">
+                    Connect your wallet to create a CAT
                   </p>
-                  <div className="bg-[#5cacc5] dark:bg-[#BA9901] rounded-[8px]">
-                    <ConnectButton/>
+                  <div className="bg-[#5cacc5] dark:bg-[#BA9901] rounded-xl shadow-lg hover:shadow-xl transition-all duration-300">
+                    <ConnectButton />
                   </div>
-                </motion.div>
-              ) : chainId && !ClowderVaultFactories[chainId] ? (
-                <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6">
-                  <p>⚠ Please switch to a supported network.</p>
-                  <p>
-                    If you would like support for another network, contact us on{" "}
-                    <a
-                      href="https://discord.com/invite/fuuWX4AbJt"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 cursor-pointer hover:underline"
-                    >
-                      Discord
-                    </a>
-                    .
-                  </p>
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-6">
-                  {fields.map(
-                    ({ id, label, type, placeholder, description }, index) => (
-                      <motion.div
-                        key={id}
-                        className="space-y-2"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3, delay: index * 0.1 }}
+                  {fields.map((field) => (
+                    <div key={field.id} className="space-y-2">
+                      <Label
+                        htmlFor={field.id}
+                        className="text-lg font-bold text-blue-400 dark:text-yellow-200"
                       >
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor={id} className="text-sm font-medium">
-                            {label}
-                          </Label>
-                          <div className="group relative">
-                            <Info className="h-4 w-4 text-gray-500 cursor-help" />
-                            <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-xs text-gray-50 opacity-0 transition-opacity group-hover:opacity-100">
-                              {description}
-                            </span>
-                          </div>
-                        </div>
+                        {field.label}
+                      </Label>
+                      <div className="relative">
                         <Input
-                          id={id}
-                          name={id}
-                          type={type}
-                          placeholder={placeholder}
-                          required
-                          value={formData[id as keyof DeployContractProps]}
+                          id={field.id}
+                          name={field.id}
+                          type={field.type}
+                          placeholder={field.placeholder}
+                          value={formData[field.id as keyof DeployContractProps]}
                           onChange={handleChange}
-                          className="w-full transition-all duration-200 focus:ring-2 focus:ring-blue-500"
+                          className={`w-full h-12 text-lg bg-white/80 dark:bg-[#2a1a00] border-2 ${
+                            validation[field.id]?.isValid === false
+                              ? 'border-red-500 dark:border-red-400'
+                              : 'border-blue-200 dark:border-yellow-700'
+                          } text-gray-800 dark:text-yellow-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-yellow-400 rounded-xl transition-all`}
+                          required
                         />
-                      </motion.div>
-                    )
-                  )}
-                  <motion.div
-                    className="pt-6"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: fields.length * 0.1 }}
-                  >
+                        <button
+                          type="button"
+                          onClick={() => toggleInfo(field.id)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2"
+                        >
+                          <Info className={`w-5 h-5 ${
+                            showInfo[field.id] 
+                              ? 'text-blue-500 dark:text-yellow-400' 
+                              : 'text-blue-400 dark:text-yellow-400'
+                          }`} />
+                        </button>
+                      </div>
+                      {(showInfo[field.id] || validation[field.id]?.isValid === false) && (
+                        <p className={`text-sm ${
+                          validation[field.id]?.isValid === false
+                            ? 'text-red-500 dark:text-red-400'
+                            : 'text-blue-600 dark:text-yellow-300'
+                        }`}>
+                          {validation[field.id]?.isValid === false
+                            ? validation[field.id]?.errorMessage
+                            : field.description}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                  <div className="flex justify-end space-x-4 pt-4">
+                    <Button
+                      type="button"
+                      onClick={() => router.push("/my-cats")}
+                      className="h-12 px-6 text-lg border-2 border-blue-200 dark:bg-yellow-200 dark:border-yellow-700 bg-transparent hover:bg-blue-50 dark:hover:bg-yellow-300 rounded-xl text-gray-700 dark:text-yellow-900"
+                    >
+                      Cancel
+                    </Button>
                     <Button
                       type="submit"
-                      className="w-full h-12 text-lg font-medium transition-all duration-200 hover:scale-[1.02]"
-                      disabled={isDeploying || isDeployingTx}
+                      disabled={isDeploying || isDeployingTx || isSigning}
+                      className="h-12 px-6 text-lg bg-gradient-to-r from-blue-600 to-blue-400 dark:from-[#FFD600] dark:to-[#BA9901] hover:from-blue-700 hover:to-blue-500 dark:hover:from-yellow-400 dark:hover:to-yellow-200 text-white dark:text-black rounded-xl shadow-lg transition-all duration-300"
                     >
-                      {isDeploying || isDeployingTx ? (
-                        <span className="flex items-center justify-center">
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Deploying...
-                        </span>
+                      {isDeploying || isDeployingTx || isSigning ? (
+                        <ButtonLoadingState text={isSigning ? "Waiting for signature..." : "Creating..."} />
                       ) : (
-                        "Deploy CAT"
+                        "Create CAT"
                       )}
                     </Button>
-                  </motion.div>
+                  </div>
                 </form>
               )}
-            </CardContent>
-          </Card>
-        </motion.div>
+            </motion.div>
+          )}
+        </div>
       </div>
     </Layout>
   );
