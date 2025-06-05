@@ -20,8 +20,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { motion } from "framer-motion"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { showTransactionToast } from "@/components/ui/transaction-toast"
-import { config } from "@/utils/config"
-// import { config } from "@/utils/config"
 
 const services = [
   { image: Service_1, alt: "Semi-Transferable", description: "Semi-Transferable" },
@@ -48,7 +46,6 @@ export default function Home() {
   const [isThemeReady, setIsThemeReady] = useState(false)
   const [catAddress, setCatAddress] = useState("")
   const [showPopup, setShowPopup] = useState(false)
-  const [isWalletConnected, setIsWalletConnected] = useState("")
   const router = useRouter()
   const { address } = useAccount()
   const [selectedChain, setSelectedChain] = useState("")
@@ -85,10 +82,6 @@ export default function Home() {
       setIsThemeReady(true)
     }
   }, [resolvedTheme])
-
-  useEffect(() => {
-    setIsWalletConnected(address as `0x${string}`)
-  }, [address])
 
   if (!isThemeReady) return null
 
@@ -170,7 +163,7 @@ export default function Home() {
                       onClick={() => router.push("/my-cats")}
                       className="h-14 px-8 text-lg bg-white/60 font-bold dark:bg-[#1a1400]/70 text-gray-700 dark:text-yellow-200 hover:bg-white/80 dark:hover:bg-[#1a1400]/90 border border-white/30 dark:border-yellow-400/20 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
                     >
-                      My CAT's
+                      My CATs
                     </Button>
                   </motion.div>
                   <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>

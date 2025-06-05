@@ -14,7 +14,6 @@ import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagm
 import { parseEther } from "viem";
 import { showTransactionToast } from "@/components/ui/transaction-toast";
 import { motion } from "framer-motion";
-import Layout from "@/components/Layout";
 import { LoadingState } from "@/components/ui/loading-state";
 import { ButtonLoadingState } from "@/components/ui/button-loading-state";
 
@@ -156,7 +155,7 @@ export default function InteractionClient() {
     if (tokenAddress && chainId) {
       getTokenDetails();
     }
-  }, [tokenAddress, chainId]);
+  }, [tokenAddress, chainId, getTokenDetails]);
 
   // Contract write hooks
   const { writeContract: mint, data: mintData } = useWriteContract();
