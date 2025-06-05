@@ -169,7 +169,7 @@ export default function MyCATsPage() {
     if (address) {
       fetchCATsFromAllChains();
     }
-  }, [address]);
+  }, [address, fetchCATsFromAllChains]);
 
   // Filter and search function
   const filteredCATs = ownedCATs?.filter((cat) => {

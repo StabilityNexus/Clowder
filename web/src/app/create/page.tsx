@@ -13,13 +13,6 @@ import { useAccount } from "wagmi";
 import { config } from "@/utils/config";
 import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { CAT_FACTORY_ABI } from "@/contractsABI/CatFactoryABI";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
 import { Info, ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
 import { showTransactionToast } from "@/components/ui/transaction-toast";
@@ -117,7 +110,7 @@ export default function CreateCAT() {
   const [showInfo, setShowInfo] = useState<{ [key: string]: boolean }>({});
   const [isSigning, setIsSigning] = useState(false);
 
-  const { address, chainId } = useAccount();
+  const { address } = useAccount();
   const router = useRouter();
 
   const { writeContract: deployCAT, data: deployData } = useWriteContract();
@@ -204,7 +197,7 @@ export default function CreateCAT() {
       router.push("/my-cats");
       setIsDeploying(false);
     }
-  }, [deployData, formData, router]);
+  }, [deployData, formData, router, saveTransaction]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
