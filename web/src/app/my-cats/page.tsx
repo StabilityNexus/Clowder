@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Layout from "@/components/Layout";
 import Link from "next/link";
-import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { useAccount, useWriteContract } from "wagmi";
 import { ClowderVaultFactories } from "@/utils/address";
 import { config } from "@/utils/config";
 import { getPublicClient } from "@wagmi/core";
@@ -50,18 +50,6 @@ export default function MyCATsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedChainId, setSelectedChainId] = useState<SupportedChainId | "all">("all");
   const { address } = useAccount();
-
-  const { writeContract: fetchCATs, data: fetchData } = useWriteContract();
-
-  useEffect(() => {
-    if (fetchData) {
-      showTransactionToast({
-        hash: fetchData,
-        chainId: config.state.chainId,
-        message: "CATs fetched successfully!",
-      });
-    }
-  }, [fetchData]);
 
   const fetchCATsFromAllChains = async () => {
     try {
