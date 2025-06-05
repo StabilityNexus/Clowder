@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Layout from "@/components/Layout";
 import Link from "next/link";
 import { useAccount } from "wagmi";
@@ -51,37 +51,7 @@ export default function MyCATsPage() {
   const [selectedChainId, setSelectedChainId] = useState<SupportedChainId | "all">("all");
   const { address } = useAccount();
 
-  const fetchCATsFromAllChains = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      let allCATs: CatDetails[] = [];
-
-      const chainPromises = Object.entries(ClowderVaultFactories)
-        .filter(([chainId]) => isValidChainId(chainId))
-        .map(([chainId, factoryAddress]) =>
-          fetchCATsForChain(Number(chainId) as SupportedChainId, factoryAddress)
-        );
-
-      const results = await Promise.all(chainPromises);
-      allCATs = results.flat().filter((cat): cat is CatDetails => cat !== null);
-
-      setOwnedCATs(allCATs);
-    } catch (error) {
-      console.error("Error fetching CATs:", error);
-      showTransactionToast({
-        hash: "0x0" as `0x${string}`,
-        chainId: config.state.chainId,
-        success: false,
-        message: "Failed to fetch CATs. Please try again later.",
-      });
-      setError("Failed to fetch CATs. Please try again later.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const fetchCATsForChain = async (
+  const fetchCATsForChain = useCallback(async (
     chainId: SupportedChainId,
     factoryAddress: string
   ): Promise<CatDetails[]> => {
@@ -93,9 +63,6 @@ export default function MyCATsPage() {
         return [];
       }
 
-      console.log(chainId);
-      console.log(factoryAddress);
-
       const catAddresses = (await publicClient.readContract({
         address: factoryAddress as `0x${string}`,
         abi: CAT_FACTORY_ABI,
@@ -103,7 +70,9 @@ export default function MyCATsPage() {
         args: [address as `0x${string}`],
       })) as `0x${string}`[];
 
-      console.log(catAddresses);
+      if (!catAddresses || catAddresses.length === 0) {
+        return [];
+      }
 
       const provider = await detectEthereumProvider();
       if (!provider) {
@@ -116,16 +85,14 @@ export default function MyCATsPage() {
             publicClient.readContract({
               address: catAddress,
               abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
-              functionName: "tokenName",
+              functionName: "name",
             }) as Promise<string>,
             publicClient.readContract({
               address: catAddress,
               abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
-              functionName: "tokenSymbol",
+              functionName: "symbol",
             }) as Promise<string>,
           ]);
-
-          console.log(tokenName, tokenSymbol);
 
           return {
             chainId,
@@ -148,13 +115,46 @@ export default function MyCATsPage() {
       console.error(`Error fetching CATs for chain ${chainId}:`, error);
       return [];
     }
-  };
+  }, [address]);
+
+  const fetchCATsFromAllChains = useCallback(async () => {
+    if (!address) {
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setError(null);
+      let allCATs: CatDetails[] = [];
+
+      const chainPromises = Object.entries(ClowderVaultFactories)
+        .filter(([chainId]) => isValidChainId(chainId))
+        .map(([chainId, factoryAddress]) =>
+          fetchCATsForChain(Number(chainId) as SupportedChainId, factoryAddress)
+        );
+
+      const results = await Promise.all(chainPromises);
+      allCATs = results.flat().filter((cat): cat is CatDetails => cat !== null);
+
+      setOwnedCATs(allCATs);
+    } catch (error) {
+      console.error("Error fetching CATs:", error);
+      setError("Failed to fetch CATs. Please try again later.");
+      showTransactionToast({
+        hash: "0x0" as `0x${string}`,
+        chainId: config.state.chainId,
+        success: false,
+        message: "Failed to fetch CATs. Please try again later.",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [address, fetchCATsForChain]);
 
   useEffect(() => {
-    if (address) {
-      fetchCATsFromAllChains();
-    }
-  }, [address, fetchCATsFromAllChains]);
+    fetchCATsFromAllChains();
+  }, [fetchCATsFromAllChains]);
 
   // Filter and search function
   const filteredCATs = ownedCATs?.filter((cat) => {
