@@ -11,7 +11,7 @@ import { CAT_FACTORY_ABI } from "@/contractsABI/CatFactoryABI";
 import detectEthereumProvider from "@metamask/detect-provider";
 import { CONTRIBUTION_ACCOUNTING_TOKEN_ABI } from "@/contractsABI/ContributionAccountingTokenABI";
 import { motion } from "framer-motion";
-import { Loader2, AlertCircle, Plus, Search, Filter } from "lucide-react";
+import { Plus, Search, Filter } from "lucide-react";
 import { showTransactionToast } from "@/components/ui/transaction-toast";
 import { LoadingState } from "@/components/ui/loading-state";
 

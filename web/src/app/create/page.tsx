@@ -20,7 +20,7 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { Info, Loader2, ArrowLeft } from "lucide-react";
+import { Info, ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
 import { showTransactionToast } from "@/components/ui/transaction-toast";
 import Link from "next/link";

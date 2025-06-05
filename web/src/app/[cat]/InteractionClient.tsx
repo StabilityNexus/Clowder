@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Info, Coins, Settings, ArrowUpRight, ArrowDownRight, Unlock, AlertCircle, Loader2 } from "lucide-react";
+import { Info, Coins, Settings, ArrowUpRight, ArrowDownRight, Unlock } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { getPublicClient } from "@wagmi/core";
 import { config } from "@/utils/config";
