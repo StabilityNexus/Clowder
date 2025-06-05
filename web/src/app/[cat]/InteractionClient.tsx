@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Info, Coins, Settings, ArrowUpRight, ArrowDownRight, Unlock } from "lucide-react";
+import { Info, Coins, Settings, ArrowUpRight, ArrowDownRight, Unlock, AlertCircle, Loader2 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { getPublicClient } from "@wagmi/core";
 import { config } from "@/utils/config";
@@ -13,6 +13,10 @@ import { Label } from "@/components/ui/label";
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { parseEther } from "viem";
 import { showTransactionToast } from "@/components/ui/transaction-toast";
+import { motion } from "framer-motion";
+import Layout from "@/components/Layout";
+import { LoadingState } from "@/components/ui/loading-state";
+import { ButtonLoadingState } from "@/components/ui/button-loading-state";
 
 // Define supported chain IDs
 type SupportedChainId = 1 | 137 | 534351 | 5115 | 61 | 2001;
@@ -51,6 +55,9 @@ export default function InteractionClient() {
     transactionHash: "",
     timestamp: "",
   });
+
+  // Add new state for transaction signing
+  const [isSigning, setIsSigning] = useState(false);
 
   // Get vault address and chainId from URL parameters
   useEffect(() => {
@@ -229,78 +236,205 @@ export default function InteractionClient() {
     }
   }, [disableTransferRestrictionData, chainId]);
 
+  // Update the mint function
+  const handleMint = async () => {
+    try {
+      setIsSigning(true);
+      await mint({
+        abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
+        address: tokenAddress,
+        functionName: "mint",
+        args: [address, parseEther(mintAmount)]
+      });
+    } catch (error) {
+      console.error("Error minting tokens:", error);
+      showTransactionToast({
+        hash: "0x0" as `0x${string}`,
+        chainId: chainId!,
+        success: false,
+        message: "Failed to mint tokens",
+      });
+    } finally {
+      setIsSigning(false);
+    }
+  };
+
+  // Update the reduceMaxSupply function
+  const handleReduceMaxSupply = async () => {
+    try {
+      setIsSigning(true);
+      await reduceMaxSupply({
+        abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
+        address: tokenAddress,
+        functionName: "reduceMaxSupply",
+        args: [parseEther(newMaxSupply)]
+      });
+    } catch (error) {
+      console.error("Error reducing max supply:", error);
+      showTransactionToast({
+        hash: "0x0" as `0x${string}`,
+        chainId: chainId!,
+        success: false,
+        message: "Failed to update max supply",
+      });
+    } finally {
+      setIsSigning(false);
+    }
+  };
+
+  // Update the reduceThresholdSupply function
+  const handleReduceThresholdSupply = async () => {
+    try {
+      setIsSigning(true);
+      await reduceThresholdSupply({
+        abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
+        address: tokenAddress,
+        functionName: "reduceThresholdSupply",
+        args: [parseEther(newThresholdSupply)]
+      });
+    } catch (error) {
+      console.error("Error reducing threshold supply:", error);
+      showTransactionToast({
+        hash: "0x0" as `0x${string}`,
+        chainId: chainId!,
+        success: false,
+        message: "Failed to update threshold supply",
+      });
+    } finally {
+      setIsSigning(false);
+    }
+  };
+
+  // Update the reduceMaxExpansionRate function
+  const handleReduceMaxExpansionRate = async () => {
+    try {
+      setIsSigning(true);
+      await reduceMaxExpansionRate({
+        abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
+        address: tokenAddress,
+        functionName: "reduceMaxExpansionRate",
+        args: [Number(newMaxExpansionRate) * 100]
+      });
+    } catch (error) {
+      console.error("Error reducing max expansion rate:", error);
+      showTransactionToast({
+        hash: "0x0" as `0x${string}`,
+        chainId: chainId!,
+        success: false,
+        message: "Failed to update max expansion rate",
+      });
+    } finally {
+      setIsSigning(false);
+    }
+  };
+
+  // Update the disableTransferRestriction function
+  const handleDisableTransferRestriction = async () => {
+    try {
+      setIsSigning(true);
+      await disableTransferRestriction({
+        abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
+        address: tokenAddress,
+        functionName: "disableTransferRestriction",
+      });
+    } catch (error) {
+      console.error("Error disabling transfer restriction:", error);
+      showTransactionToast({
+        hash: "0x0" as `0x${string}`,
+        chainId: chainId!,
+        success: false,
+        message: "Failed to disable transfer restriction",
+      });
+    } finally {
+      setIsSigning(false);
+    }
+  };
+
   if (isLoading) {
     return (
-      <div className="w-full h-screen flex items-center justify-center bg-gray-50 dark:bg-black">
-        <div className="text-xl text-gray-900 dark:text-white">
-          Loading token details...
-        </div>
-      </div>
+      <LoadingState
+        title="Loading Token Details"
+        message="Please wait while we fetch your token information..."
+      />
     );
   }
 
   if (error) {
     return (
-      <div className="w-full h-screen flex items-center justify-center bg-gray-50 dark:bg-black">
-        <div className="text-xl text-red-600 dark:text-red-400">{error}</div>
-      </div>
+      <LoadingState
+        type="error"
+        errorMessage={error}
+      />
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b">
-      <div className="max-w-7xl mx-auto space-y-8">
+    <div className="min-h-screen mx-auto">
+      <div className="max-w-7xl mx-auto space-y-8 px-4 py-12">
         {/* Header Section */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl text-gray-800 font-bold dark:text-gray-400">
+          <motion.h1 
+            className="text-4xl md:text-5xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-blue-200 dark:from-[#FFD600] dark:to-white mb-4 md:mb-0 drop-shadow-lg"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
             {tokenDetails.tokenSymbol} Token Management
-          </h1>
+          </motion.h1>
+          <motion.p 
+            className="text-lg text-gray-600 font-bold dark:text-yellow-100 mt-4"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+          >
+            {tokenDetails.tokenName}
+          </motion.p>
         </div>
 
         {/* Token Overview Card */}
-        <Card className="bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm border-2 border-gray-200 dark:border-gray-800 shadow-xl">
+        <Card className="group relative rounded-2xl p-8 shadow-2xl bg-white/60 dark:bg-[#1a1400]/70 border border-white/30 dark:border-yellow-400/20 backdrop-blur-lg transition-all duration-300 hover:scale-105 hover:shadow-[0_8px_32px_0_rgba(90,180,255,0.25)] dark:hover:shadow-[0_8px_32px_0_rgba(255,217,0,0.25)] hover:border-blue-400 dark:hover:border-yellow-400 before:absolute before:inset-0 before:rounded-2xl before:bg-gradient-to-br before:from-blue-200/30 before:to-transparent dark:before:from-yellow-400/20 dark:before:to-transparent before:opacity-0 group-hover:before:opacity-100 before:transition-opacity before:duration-300">
           <CardHeader className="border-b border-gray-200 dark:border-gray-800">
-            <CardTitle className="flex items-center gap-2 text-2xl">
-              <Info className="h-6 w-6 text-blue-500" />
+            <CardTitle className="flex items-center gap-2 text-3xl text-blue-400 dark:text-yellow-200">
+              <Info className="h-6 w-6 text-blue-400 dark:text-[#FFD600]" />
               Token Overview
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
+              <div className="group relative rounded-2xl p-6 shadow-2xl bg-white/60 dark:bg-[#1a1400]/70 border border-white/30 dark:border-yellow-400/20 backdrop-blur-lg transition-all duration-300 hover:scale-105 hover:shadow-[0_8px_32px_0_rgba(90,180,255,0.25)] dark:hover:shadow-[0_8px_32px_0_rgba(255,217,0,0.25)] hover:border-blue-400 dark:hover:border-yellow-400">
                 <div className="flex items-center gap-2 mb-2">
-                  <Coins className="h-5 w-5 text-green-500" />
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Max Supply</h3>
+                  <Coins className="h-5 w-5 text-green-500 dark:text-[#FFD600]" />
+                  <h3 className="text-lg font-semibold text-blue-400 dark:text-yellow-200">Max Supply</h3>
                 </div>
-                <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                <p className="text-3xl font-semibold text-gray-600 dark:text-yellow-200">
                   {tokenDetails.maxSupply}
                 </p>
               </div>
-              <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
+              <div className="group relative rounded-2xl p-6 shadow-2xl bg-white/60 dark:bg-[#1a1400]/70 border border-white/30 dark:border-yellow-400/20 backdrop-blur-lg transition-all duration-300 hover:scale-105 hover:shadow-[0_8px_32px_0_rgba(90,180,255,0.25)] dark:hover:shadow-[0_8px_32px_0_rgba(255,217,0,0.25)] hover:border-blue-400 dark:hover:border-yellow-400">
                 <div className="flex items-center gap-2 mb-2">
-                  <ArrowUpRight className="h-5 w-5 text-blue-500" />
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Threshold Supply</h3>
+                  <ArrowUpRight className="h-5 w-5 text-blue-400 dark:text-[#FFD600]" />
+                  <h3 className="text-lg font-semibold text-blue-400 dark:text-yellow-200">Threshold Supply</h3>
                 </div>
-                <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                <p className="text-3xl font-semibold text-gray-600 dark:text-yellow-200">
                   {tokenDetails.thresholdSupply}
                 </p>
               </div>
-              <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
+              <div className="group relative rounded-2xl p-6 shadow-2xl bg-white/60 dark:bg-[#1a1400]/70 border border-white/30 dark:border-yellow-400/20 backdrop-blur-lg transition-all duration-300 hover:scale-105 hover:shadow-[0_8px_32px_0_rgba(90,180,255,0.25)] dark:hover:shadow-[0_8px_32px_0_rgba(255,217,0,0.25)] hover:border-blue-400 dark:hover:border-yellow-400">
                 <div className="flex items-center gap-2 mb-2">
-                  <ArrowDownRight className="h-5 w-5 text-purple-500" />
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Max Expansion Rate</h3>
+                  <ArrowDownRight className="h-5 w-5 text-purple-500 dark:text-[#FFD600]" />
+                  <h3 className="text-lg font-semibold text-blue-400 dark:text-yellow-200">Max Expansion Rate</h3>
                 </div>
-                <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                <p className="text-3xl font-semibold text-gray-600 dark:text-yellow-200">
                   {tokenDetails.maxExpansionRate}%
                 </p>
               </div>
             </div>
-            <div className="mt-6 bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm">
+            <div className="mt-6 group relative rounded-2xl p-6 shadow-2xl bg-white/60 dark:bg-[#1a1400]/70 border border-white/30 dark:border-yellow-400/20 backdrop-blur-lg transition-all duration-300 hover:scale-105 hover:shadow-[0_8px_32px_0_rgba(90,180,255,0.25)] dark:hover:shadow-[0_8px_32px_0_rgba(255,217,0,0.25)] hover:border-blue-400 dark:hover:border-yellow-400">
               <div className="flex items-center gap-2 mb-2">
-                <Info className="h-5 w-5 text-gray-500" />
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Contract Address</h3>
+                <Info className="h-5 w-5 text-gray-500 dark:text-[#FFD600]" />
+                <h3 className="text-lg font-semibold text-blue-400 dark:text-yellow-200">Contract Address</h3>
               </div>
-              <p className="text-sm font-mono text-gray-600 dark:text-gray-400 break-all">
+              <p className="text-sm font-mono text-gray-600 dark:text-yellow-100 break-all">
                 {tokenDetails.transactionHash}
               </p>
             </div>
@@ -308,47 +442,46 @@ export default function InteractionClient() {
         </Card>
 
         {/* Mint Tokens Card */}
-        <Card className="bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm border-2 border-gray-200 dark:border-gray-800 shadow-xl">
+        <Card className="group relative rounded-2xl p-8 shadow-2xl bg-white/60 dark:bg-[#1a1400]/70 border border-white/30 dark:border-yellow-400/20 backdrop-blur-lg transition-all duration-300 hover:scale-105 hover:shadow-[0_8px_32px_0_rgba(90,180,255,0.25)] dark:hover:shadow-[0_8px_32px_0_rgba(255,217,0,0.25)] hover:border-blue-400 dark:hover:border-yellow-400">
           <CardHeader className="border-b border-gray-200 dark:border-gray-800">
-            <CardTitle className="flex items-center gap-2 text-2xl">
-              <Coins className="h-6 w-6 text-green-500" />
+            <CardTitle className="flex items-center gap-2 text-3xl text-blue-400 dark:text-yellow-200">
+              <Coins className="h-6 w-6 text-green-500 dark:text-[#FFD600]" />
               Mint Tokens
             </CardTitle>
           </CardHeader>
           <CardContent className="pt-6">
             <div className="max-w-md mx-auto space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="mintAmount" className="text-lg font-bold">Amount to Mint</Label>
+                <Label htmlFor="mintAmount" className="text-lg font-bold text-gray-600  dark:text-yellow-200">Amount to Mint</Label>
                 <Input
                   id="mintAmount"
                   type="number"
                   placeholder="Enter amount"
                   value={mintAmount}
                   onChange={(e) => setMintAmount(e.target.value)}
-                  className="h-12 text-lg"
+                  className="h-12 text-lg bg-white/60 dark:bg-[#1a1400]/70 border-2 border-gray-200 dark:border-yellow-400/20 text-gray-600 dark:text-yellow-200"
                 />
               </div>
               <Button
-                onClick={() => mint({
-                  abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
-                  address: tokenAddress,
-                  functionName: "mint",
-                  args: [address, parseEther(mintAmount)]
-                })}
-                disabled={!mintAmount || isMinting}
-                className="w-full h-12 text-lg"
+                onClick={handleMint}
+                disabled={!mintAmount || isMinting || isSigning}
+                className="w-full h-12 text-lg bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl"
               >
-                {isMinting ? "Minting..." : "Mint Tokens"}
+                {isMinting || isSigning ? (
+                  <ButtonLoadingState text={isSigning ? "Waiting for signature..." : "Processing..."} />
+                ) : (
+                  "Mint Tokens"
+                )}
               </Button>
             </div>
           </CardContent>
         </Card>
 
         {/* Admin Functions Card */}
-        <Card className="bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm border-2 border-gray-200 dark:border-gray-800 shadow-xl">
+        <Card className="group relative rounded-2xl p-8 shadow-2xl bg-white/60 dark:bg-[#1a1400]/70 border border-white/30 dark:border-yellow-400/20 backdrop-blur-lg transition-all duration-300 hover:scale-105 hover:shadow-[0_8px_32px_0_rgba(90,180,255,0.25)] dark:hover:shadow-[0_8px_32px_0_rgba(255,217,0,0.25)] hover:border-blue-400 dark:hover:border-yellow-400">
           <CardHeader className="border-b border-gray-200 dark:border-gray-800">
-            <CardTitle className="flex items-center gap-2 text-2xl">
-              <Settings className="h-6 w-6 text-blue-500" />
+            <CardTitle className="flex items-center gap-2 text-3xl text-blue-400 dark:text-yellow-200">
+              <Settings className="h-6 w-6 text-blue-400 dark:text-[#FFD600]" />
               Admin Functions
             </CardTitle>
           </CardHeader>
@@ -356,95 +489,86 @@ export default function InteractionClient() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="newMaxSupply" className="text-lg font-bold">New Max Supply</Label>
+                  <Label htmlFor="newMaxSupply" className="text-lg font-bold text-gray-600 dark:text-yellow-200">New Max Supply</Label>
                   <Input
                     id="newMaxSupply"
                     type="number"
                     placeholder="Enter new max supply"
                     value={newMaxSupply}
                     onChange={(e) => setNewMaxSupply(e.target.value)}
-                    className="h-12 text-lg"
+                    className="h-12 text-lg bg-white/60 dark:bg-[#1a1400]/70 border-2 border-gray-200 dark:border-yellow-400/20 text-gray-600 dark:text-yellow-200"
                   />
                   <Button
-                    onClick={() => reduceMaxSupply({
-                      abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
-                      address: tokenAddress,
-                      functionName: "reduceMaxSupply",
-                      args: [parseEther(newMaxSupply)]
-                    })}
-                    disabled={!newMaxSupply || isReducingMaxSupply}
-                    className="w-full h-12 text-lg"
+                    onClick={handleReduceMaxSupply}
+                    disabled={!newMaxSupply || isReducingMaxSupply || isSigning}
+                    className="w-full h-12 text-lg bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl"
                   >
-                    {isReducingMaxSupply ? "Updating..." : "Update Max Supply"}
+                    {isReducingMaxSupply || isSigning ? (
+                      <ButtonLoadingState text={isSigning ? "Waiting for signature..." : "Processing..."} />
+                    ) : (
+                      "Update Max Supply"
+                    )}
                   </Button>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="newThresholdSupply" className="text-lg font-bold">New Threshold Supply</Label>
+                  <Label htmlFor="newThresholdSupply" className="text-lg font-bold text-gray-600 dark:text-yellow-200">New Threshold Supply</Label>
                   <Input
                     id="newThresholdSupply"
                     type="number"
                     placeholder="Enter new threshold supply"
                     value={newThresholdSupply}
                     onChange={(e) => setNewThresholdSupply(e.target.value)}
-                    className="h-12 text-lg"
+                    className="h-12 text-lg bg-white/60 dark:bg-[#1a1400]/70 border-2 border-gray-200 dark:border-yellow-400/20 text-gray-600 dark:text-yellow-200"
                   />
                   <Button
-                    onClick={() => reduceThresholdSupply({
-                      abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
-                      address: tokenAddress,
-                      functionName: "reduceThresholdSupply",
-                      args: [parseEther(newThresholdSupply)]
-                    })}
-                    disabled={!newThresholdSupply || isReducingThresholdSupply}
-                    className="w-full h-12 text-lg"
+                    onClick={handleReduceThresholdSupply}
+                    disabled={!newThresholdSupply || isReducingThresholdSupply || isSigning}
+                    className="w-full h-12 text-lg bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl"
                   >
-                    {isReducingThresholdSupply ? "Updating..." : "Update Threshold Supply"}
+                    {isReducingThresholdSupply || isSigning ? (
+                      <ButtonLoadingState text={isSigning ? "Waiting for signature..." : "Processing..."} />
+                    ) : (
+                      "Update Threshold Supply"
+                    )}
                   </Button>
                 </div>
               </div>
 
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="newMaxExpansionRate" className="text-lg font-bold">New Max Expansion Rate (%)</Label>
+                  <Label htmlFor="newMaxExpansionRate" className="text-lg font-bold text-gray-600 dark:text-yellow-200">New Max Expansion Rate (%)</Label>
                   <Input
                     id="newMaxExpansionRate"
                     type="number"
                     placeholder="Enter new max expansion rate"
                     value={newMaxExpansionRate}
                     onChange={(e) => setNewMaxExpansionRate(e.target.value)}
-                    className="h-12 text-lg"
+                    className="h-12 text-lg bg-white/60 dark:bg-[#1a1400]/70 border-2 border-gray-200 dark:border-yellow-400/20 text-gray-600 dark:text-yellow-200"
                   />
                   <Button
-                    onClick={() => reduceMaxExpansionRate({
-                      abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
-                      address: tokenAddress,
-                      functionName: "reduceMaxExpansionRate",
-                      args: [Number(newMaxExpansionRate) * 100]
-                    })}
-                    disabled={!newMaxExpansionRate || isReducingMaxExpansionRate}
-                    className="w-full h-12 text-lg"
+                    onClick={handleReduceMaxExpansionRate}
+                    disabled={!newMaxExpansionRate || isReducingMaxExpansionRate || isSigning}
+                    className="w-full h-12 text-lg bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl"
                   >
-                    {isReducingMaxExpansionRate ? "Updating..." : "Update Max Expansion Rate"}
+                    {isReducingMaxExpansionRate || isSigning ? (
+                      <ButtonLoadingState text={isSigning ? "Waiting for signature..." : "Processing..."} />
+                    ) : (
+                      "Update Max Expansion Rate"
+                    )}
                   </Button>
                 </div>
 
                 {transferRestricted ? (
                   <div className="space-y-2">
-                    <Label className="text-lg font-bold">Transfer Restriction</Label>
+                    <Label className="text-lg font-bold text-gray-600 dark:text-yellow-200">Transfer Restriction</Label>
                     <Button
-                      onClick={() =>
-                        disableTransferRestriction({
-                          abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
-                          address: tokenAddress,
-                          functionName: "disableTransferRestriction",
-                        })
-                      }
-                      disabled={isDisablingTransferRestriction}
-                      className="w-full h-12 text-lg"
+                      onClick={handleDisableTransferRestriction}
+                      disabled={isDisablingTransferRestriction || isSigning}
+                      className="w-full h-12 text-lg bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl"
                     >
-                      {isDisablingTransferRestriction ? (
-                        "Disabling..."
+                      {isDisablingTransferRestriction || isSigning ? (
+                        <ButtonLoadingState text={isSigning ? "Waiting for signature..." : "Processing..."} />
                       ) : (
                         <div className="flex items-center gap-2">
                           <Unlock className="h-5 w-5" />
@@ -455,8 +579,8 @@ export default function InteractionClient() {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    <Label className="text-lg font-bold">Transfer Restriction</Label>
-                    <p className="text-lg">Transfer restriction is already disabled</p>
+                    <Label className="text-lg font-bold text-gray-600 dark:text-yellow-200">Transfer Restriction</Label>
+                    <p className="text-lg text-gray-600 dark:text-yellow-200">Transfer restriction is already disabled</p>
                   </div>
                 )}
               </div>

@@ -17,9 +17,10 @@ import { useTheme } from "next-themes"
 import { faGithub, faDiscord, faTelegram, faXTwitter} from "@fortawesome/free-brands-svg-icons"
 import { useAccount } from "wagmi"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { motion } from "framer-motion"
+import { motion, AnimatePresence, type MotionProps } from "framer-motion"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { showTransactionToast } from "@/components/ui/transaction-toast"
+import { config } from "@/utils/config"
 // import { config } from "@/utils/config"
 
 const services = [
@@ -93,195 +94,253 @@ export default function Home() {
 
   return (
     <Layout>
-      <div className="container mx-auto px-4">
+      <div className="min-h-screen ">
         {/* Hero Section */}
         <motion.section
-          className="flex flex-col items-center pt-48 min-h-screen text-center"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
+          className="relative flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] text-center overflow-hidden"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.8 }}
         >
+          {/* Background Effects */}
+          <div className="absolute inset-0 overflow-hidden">
+            <div className="absolute -bottom-20 -left-40 w-80 h-80 bg-blue-200 dark:bg-blue-900 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
+            <div className="absolute -bottom-40 -right-40 w-80 h-80 bg-blue-300 dark:bg-blue-800 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-blue-400 dark:bg-blue-700 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
+          </div>
+
           <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
+            className="relative z-10 max-w-4xl mx-auto px-4"
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.8, delay: 0.2 }}
           >
-            <h1 className="text-4xl md:text-5xl font-bold mb-8 font-mono">
+            <h1 className="text-4xl md:text-5xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-blue-200 dark:from-[#FFD600] dark:to-white mb-4 md:mb-0 drop-shadow-lg">
               Welcome to <span className="text-[#5cacc5] dark:text-[#BA9901]">Clowder</span>
             </h1>
-          </motion.div>
+            <motion.p
+              className="text-xl font-bold md:text-2xl mb-12 mt-8 text-gray-600 dark:text-gray-300 "
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.8, delay: 0.4 }}
+            >
+              Create Contribution Accounting Tokens (CATs) <br />
+              to track contributions to your projects.
+            </motion.p>
 
-          <motion.p
-            className="text-xl md:text-2xl mb-6 max-w-4xl font-mono"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.4 }}
-          >
-            Create Contribution Accounting Tokens (CATs) <br />
-            to track contributions to your projects.
-          </motion.p>
-          <motion.div
-            className="flex space-x-4 mb-8"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.6 }}
-          >
-            {contact_links.map(({ href, icon }, index) => (
-              <a
-                key={index}
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-3xl md:text-4xl hover:text-blue-600 transition-colors duration-300"
-              >
-                <FontAwesomeIcon icon={icon} />
-              </a>
-            ))}
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.8 }}
-          >
-            {!isWalletConnected ? (
-              <div className="bg-[#5cacc5] dark:bg-[#BA9901] rounded-[8px]">
-                <ConnectButton/>
-              </div>
-            ) : (
-              <div className="max-w-full">
-                <Button
-                  onClick={() => router.push("/my-cats")}
-                  className="mb-2 mr-2 text-black dark:text-white"
+            <motion.div
+              className="flex items-center justify-center space-x-6 mb-12"
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.8, delay: 0.6 }}
+            >
+              {contact_links.map(({ href, icon }, index) => (
+                <motion.a
+                  key={index}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-3xl text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-300"
+                  whileHover={{ scale: 1.2 }}
+                  whileTap={{ scale: 0.9 }}
                 >
-                  My CAT's
-                </Button>
-                <Button
-                  onClick={() => router.push("/create")}
-                  className="mb-2 mr-2 text-black dark:text-white"
+                  <FontAwesomeIcon icon={icon} />
+                </motion.a>
+              ))}
+            </motion.div>
+
+            <motion.div
+              className="flex flex-wrap justify-center gap-4"
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.8, delay: 0.8 }}
+            >
+              {!address ? (
+                <motion.div
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="bg-[#5cacc5] dark:bg-[#BA9901] rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
                 >
-                  Create CAT
-                </Button>
-                <Button onClick={() => setShowPopup(true)} className="bg-gray-600 hover:bg-gray-700 text-white">
-                  Use CAT
-                </Button>
-              </div>
-            )}
+                  <ConnectButton />
+                </motion.div>
+              ) : (
+                <>
+                  <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                    <Button
+                      onClick={() => router.push("/my-cats")}
+                      className="h-14 px-8 text-lg bg-white/60 font-bold dark:bg-[#1a1400]/70 text-gray-700 dark:text-yellow-200 hover:bg-white/80 dark:hover:bg-[#1a1400]/90 border border-white/30 dark:border-yellow-400/20 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                    >
+                      My CAT's
+                    </Button>
+                  </motion.div>
+                  <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                    <Button
+                      onClick={() => router.push("/create")}
+                      className="h-14 px-8 text-lg bg-[#5cacc5] font-bold dark:bg-[#BA9901] text-white hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                    >
+                      Create CAT
+                    </Button>
+                  </motion.div>
+                  <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                    <Button
+                      onClick={() => setShowPopup(true)}
+                      className="h-14 px-8 text-lg font-bold bg-white/60 dark:bg-[#1a1400]/70 text-gray-700 dark:text-yellow-200 hover:bg-white/80 dark:hover:bg-[#1a1400]/90 border border-white/30 dark:border-yellow-400/20 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                    >
+                      Use CAT
+                    </Button>
+                  </motion.div>
+                </>
+              )}
+            </motion.div>
           </motion.div>
         </motion.section>
 
         {/* Services Section */}
         <motion.section
-          className="py-16 text-center"
+          className="py-24 text-center relative"
           initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, delay: 1 }}
+          whileInView={{ opacity: 1 }}
+          transition={{ duration: 0.8 }}
+          viewport={{ once: true }}
         >
-          <h2
-            id="Services"
-            className="text-3xl md:text-5xl font-bold mb-12"
-            style={{ fontFamily: "var(--font-bebas-nueue)" }}
-          >
-            Why CATs?
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
-            {services.map((service, index) => (
-              <motion.div
-                key={index}
-                className="flex flex-col items-center transform transition-all duration-300 hover:scale-105"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.2 + 1.2 }}
-              >
-                <Image
-                  src={service.image || "/placeholder.svg"}
-                  alt={service.alt}
-                  width={250}
-                  height={150}
-                  className="rounded-md shadow-lg"
-                />
-                <p className="text-lg md:text-2xl font-semibold mt-3 font-mono">{service.description}</p>
-              </motion.div>
-            ))}
+          <div className="max-w-7xl mx-auto px-4">
+            <h2
+              className="text-4xl md:text-6xl font-extrabold mb-16 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-blue-200 dark:from-[#FFD600] dark:to-blue-400 drop-shadow-lg"
+            >
+              Why CATs?
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-12">
+              {services.map((service, index) => (
+                <motion.div
+                  key={index}
+                  className={`
+                    group relative rounded-2xl p-8 
+                    bg-white/40 dark:bg-[#1a1400]/70
+                    border border-white/30 dark:border-yellow-400/20
+                    backdrop-blur-lg
+                    transition-all duration-300
+                    hover:scale-105
+                    hover:shadow-[0_8px_32px_0_rgba(90,180,255,0.25)]
+                    dark:hover:shadow-[0_8px_32px_0_rgba(255,217,0,0.25)]
+                    hover:border-blue-400 dark:hover:border-yellow-400
+                    before:absolute before:inset-0 before:rounded-2xl
+                    before:bg-gradient-to-br before:from-blue-200/30 before:to-transparent
+                    dark:before:from-yellow-400/20 dark:before:to-transparent
+                    before:opacity-0 group-hover:before:opacity-100 before:transition-opacity before:duration-300
+                  `}
+                  initial={{ y: 20, opacity: 0 }}
+                  whileInView={{ y: 0, opacity: 1 }}
+                  transition={{ duration: 0.5, delay: index * 0.2 }}
+                  viewport={{ once: true }}
+                  whileHover={{ y: -8 }}
+                >
+                  <div className="relative z-10 flex flex-col items-center">
+                    <Image
+                      src={service.image || "/placeholder.svg"}
+                      alt={service.alt}
+                      width={250}
+                      height={150}
+                      className="rounded-xl mb-6 transform group-hover:scale-110 transition-transform duration-300"
+                    />
+                    <p className="text-2xl font-bold text-gray-900 dark:text-yellow-200 drop-shadow-sm">
+                      {service.description}
+                    </p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
           </div>
         </motion.section>
 
-        {/* Contact Us Section */}
+        {/* About Us Section */}
         <motion.section
-          className="py-16 mx-4 md:mx-12"
+          className="py-24 relative overflow-hidden"
           initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, delay: 1.8 }}
+          whileInView={{ opacity: 1 }}
+          transition={{ duration: 0.8 }}
+          viewport={{ once: true }}
         >
-          <h2
-            id="Contact"
-            className="text-3xl md:text-5xl font-bold mb-12 text-center"
-            style={{ fontFamily: "var(--font-bebas-nueue)" }}
-          >
-            About Us
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center md:py-20">
-            {/* Contact Info */}
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.5, delay: 2 }}
+          <div className="max-w-7xl mx-auto px-4">
+            <motion.h2
+              className="text-4xl md:text-6xl font-bold mb-16 text-center bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-blue-200 dark:from-[#FFD600] dark:to-blue-400"
+              initial={{ y: 20, opacity: 0 }}
+              whileInView={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.8 }}
+              viewport={{ once: true }}
             >
-              <p className="text-lg md:text-2xl mb-4 font-mono">
-                Clowder was developed by <br />
-                The Stable Order <br />
-                within the Stability Nexus.
-              </p>
-              <hr className="bg-black dark:bg-white w-4/5 h-px font-bold mb-4" />
-              <p className="text-lg md:text-2xl mb-3 font-mono">Contact us through:</p>
-              <div className="flex flex-col md:flex-row space-y-2 md:space-x-4 md:space-y-0">
-                {contact_links.map(({ href, icon }, index) => (
-                  <a
-                    key={index}
-                    href={href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-2xl hover:text-blue-600 transition-colors duration-300"
-                  >
-                    <FontAwesomeIcon icon={icon} />
-                  </a>
-                ))}
-              </div>
-            </motion.div>
+              About Us
+            </motion.h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
+              <motion.div
+                className="space-y-8"
+                initial={{ x: -20, opacity: 0 }}
+                whileInView={{ x: 0, opacity: 1 }}
+                transition={{ duration: 0.8 }}
+                viewport={{ once: true }}
+              >
+                <p className="text-xl md:text-xl text-gray-600 dark:text-gray-300 font-bold leading-relaxed">
+                  Clowder was developed by <br />
+                  The Stable Order <br />
+                  within the Stability Nexus.
+                </p>
+                <div className="h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-gray-600 to-transparent"></div>
+                <p className="text-xl md:text-xl text-gray-600 dark:text-gray-300 font-bold">
+                  Contact us through:
+                </p>
+                <div className="flex space-x-6">
+                  {contact_links.map(({ href, icon }, index) => (
+                    <motion.a
+                      key={index}
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-2xl text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-300"
+                      whileHover={{ scale: 1.2 }}
+                      whileTap={{ scale: 0.9 }}
+                    >
+                      <FontAwesomeIcon icon={icon} />
+                    </motion.a>
+                  ))}
+                </div>
+              </motion.div>
 
-            {/* Right Content */}
-            <motion.div
-              className="relative flex justify-center items-center mt-8 md:mt-0"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.5, delay: 2.2 }}
-            >
-              <Image
-                src={resolvedTheme === "dark" ? catDark : catLight}
-                alt="Clowder Contact"
-                width={450}
-                height={450}
-                className="rounded-full shadow-2xl"
-              />
-            </motion.div>
+              <motion.div
+                className="relative"
+                initial={{ x: 20, opacity: 0 }}
+                whileInView={{ x: 0, opacity: 1 }}
+                transition={{ duration: 0.8 }}
+                viewport={{ once: true }}
+              >
+                <div className="relative z-10 flex flex-col items-center">
+                  <Image
+                    src={resolvedTheme === "dark" ? catDark : catLight}
+                    alt="Clowder Contact"
+                    width={450}
+                    height={450}
+                    className="rounded-2xl transform hover:scale-105 transition-transform duration-300"
+                  />
+                </div>
+              </motion.div>
+            </div>
           </div>
         </motion.section>
       </div>
 
       {/* Use CAT Dialog */}
       <Dialog open={showPopup} onOpenChange={setShowPopup}>
-        <DialogContent className="sm:max-w-[600px] bg-white rounded-2xl dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-800 overflow-hidden">
+        <DialogContent className="sm:max-w-[600px] bg-white/70 dark:bg-[#1a1400]/80 border border-white/30 dark:border-yellow-400/20 backdrop-blur-lg rounded-2xl overflow-hidden">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            <DialogTitle className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-blue-200 dark:from-[#FFD600] dark:to-white">
               Use Existing CAT
             </DialogTitle>
-            <DialogDescription className="text-gray-600 dark:text-gray-400">
+            <DialogDescription className="text-gray-600 dark:text-yellow-100">
               Enter the CAT address and select the network to interact with your token.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-6 py-6">
             <div className="space-y-4">
               <div className="space-y-2">
-                <label htmlFor="catAddress" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                <label htmlFor="catAddress" className="text-sm font-medium text-blue-600 dark:text-yellow-200">
                   CAT Address
                 </label>
                 <Input
@@ -289,23 +348,23 @@ export default function Home() {
                   value={catAddress}
                   onChange={(e) => setCatAddress(e.target.value)}
                   placeholder="0x..."
-                  className="w-full h-12 text-lg font-mono bg-gray-50 dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-blue-500 rounded-xl"
+                  className="w-full h-12 text-lg font-mono bg-white/60 dark:bg-[#2a1a00] border-2 border-blue-200 dark:border-yellow-400/20 text-gray-800 dark:text-yellow-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-yellow-400 rounded-xl"
                 />
               </div>
               <div className="space-y-2">
-                <label htmlFor="network" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                <label htmlFor="network" className="text-sm font-medium text-blue-600 dark:text-yellow-200">
                   Network
                 </label>
                 <Select value={selectedChain} onValueChange={setSelectedChain}>
-                  <SelectTrigger className="w-full h-12 text-lg text-black bg-gray-50 dark:bg-gray-800 dark:text-gray-300 border-2 border-gray-200 dark:border-gray-700 rounded-xl">
+                  <SelectTrigger className="w-full h-12 text-lg text-gray-800 dark:text-yellow-100 bg-white/60 dark:bg-[#2a1a00] border-2 border-blue-200 dark:border-yellow-400/20 rounded-xl">
                     <SelectValue placeholder="Select network" />
                   </SelectTrigger>
-                  <SelectContent className="bg-gray-50 dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-xl">
+                  <SelectContent className="bg-white/90 dark:bg-[#1a1400] border-2 border-blue-200 dark:border-yellow-400/20 rounded-xl">
                     {supportedChains.map((chain) => (
                       <SelectItem 
                         key={chain.id} 
                         value={chain.id}
-                        className="text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                        className="text-gray-800 dark:text-yellow-100 hover:bg-blue-50 dark:hover:bg-yellow-400/10 rounded-lg"
                       >
                         {chain.name}
                       </SelectItem>
@@ -318,26 +377,20 @@ export default function Home() {
           <div className="flex justify-end space-x-4">
             <Button
               onClick={() => setShowPopup(false)}
-              className="h-12 px-6 text-lg border-2 border-gray-200 dark:bg-gray-200 dark:border-gray-700 bg-transparent hover:bg-gray-100 dark:hover:bg-gray-400 rounded-xl"
+              className="h-12 px-6 text-lg border-2 border-blue-200 dark:border-yellow-400/20 bg-transparent hover:bg-blue-50 dark:hover:bg-yellow-400/10 text-gray-700 dark:text-yellow-200 rounded-xl"
             >
               Cancel
             </Button>
             <Button
               onClick={handleUseCAT}
               disabled={!catAddress.trim() || !selectedChain}
-              className="h-12 px-6 text-lg bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl"
+              className="h-12 px-6 text-lg bg-gradient-to-r from-blue-600 to-blue-400 dark:from-[#FFD600] dark:to-[#BA9901] hover:from-blue-700 hover:to-blue-500 dark:hover:from-yellow-400 dark:hover:to-yellow-200 text-white dark:text-black rounded-xl shadow-lg transition-all duration-300"
             >
               Continue
             </Button>
           </div>
         </DialogContent>
       </Dialog>
-      {showPopup && (
-        <div
-          className="fixed top-0 left-0 w-full h-full bg-black bg-opacity-50"
-          onClick={() => setShowPopup(false)}
-        />
-      )}
     </Layout>
   )
 }

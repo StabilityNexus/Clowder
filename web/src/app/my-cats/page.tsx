@@ -11,11 +11,22 @@ import { CAT_FACTORY_ABI } from "@/contractsABI/CatFactoryABI";
 import detectEthereumProvider from "@metamask/detect-provider";
 import { CONTRIBUTION_ACCOUNTING_TOKEN_ABI } from "@/contractsABI/ContributionAccountingTokenABI";
 import { motion } from "framer-motion";
-import { Loader2, AlertCircle } from "lucide-react";
+import { Loader2, AlertCircle, Plus, Search, Filter } from "lucide-react";
 import { showTransactionToast } from "@/components/ui/transaction-toast";
+import { LoadingState } from "@/components/ui/loading-state";
 
 // Define supported chain IDs
 type SupportedChainId = 1 | 137 | 534351 | 5115 | 61 | 2001;
+
+// Chain ID to name mapping
+const CHAIN_NAMES: Record<SupportedChainId, string> = {
+  1: "Ethereum",
+  137: "Polygon",
+  534351: "Scroll Sepolia",
+  5115: "Citrea",
+  61: "Ethereum Classic",
+  2001: "Milkomeda"
+};
 
 interface CatDetails {
   chainId: SupportedChainId;
@@ -36,6 +47,8 @@ export default function MyCATsPage() {
   const [ownedCATs, setOwnedCATs] = useState<CatDetails[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedChainId, setSelectedChainId] = useState<SupportedChainId | "all">("all");
   const { address } = useAccount();
 
   const { writeContract: fetchCATs, data: fetchData } = useWriteContract();
@@ -158,89 +171,214 @@ export default function MyCATsPage() {
     }
   }, [address]);
 
+  // Filter and search function
+  const filteredCATs = ownedCATs?.filter((cat) => {
+    const matchesSearch = searchQuery === "" || 
+      cat.tokenName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      cat.tokenSymbol.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesChain = selectedChainId === "all" || cat.chainId === Number(selectedChainId);
+    
+    return matchesSearch && matchesChain;
+  });
+
   return (
     <Layout>
-      <div className="w-full min-h-screen ">
-        <div className="container mx-auto py-12 px-4 sm:px-6 lg:px-8">
-          <motion.h1
-            className="text-4xl font-extrabold text-center text-[#5cacc5] dark:text-[#BA9901] mb-8"
-            initial={{ opacity: 0, y: -20 }}
+      <div className="min-h-screen mx-auto mb-24">
+        <div className="container mx-auto px-4 py-12">
+          <motion.div
+            className="max-w-7xl mx-auto"
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            My CATs
-          </motion.h1>
-          {isLoading ? (
-            <div className="flex justify-center items-center">
-              <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-              <span className="ml-2 text-lg text-gray-700 dark:text-gray-300">
-                Loading your CATs...
-              </span>
-            </div>
-          ) : error ? (
-            <motion.div
-              className="flex items-center justify-center p-4 bg-red-100 dark:bg-red-900 rounded-lg"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.3 }}
-            >
-              <AlertCircle className="w-6 h-6 text-red-500 mr-2" />
-              <p className="text-red-700 dark:text-red-300">{error}</p>
-            </motion.div>
-          ) : ownedCATs?.length ? (
-            <motion.ul
-              className="grid gap-6 md:grid-cols-2 lg:grid-cols-3"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5, staggerChildren: 0.1 }}
-            >
-              {ownedCATs.map((cat) => (
-                <motion.li
-                  key={`${cat.chainId}-${cat.address}`}
-                  className="border border-gray-600 rounded-xl shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300"
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.98 }}
+            <div className="flex flex-col md:flex-row justify-between items-center mb-12">
+              <motion.h1
+                className="text-4xl md:text-5xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-blue-300 dark:from-[#FFD600] dark:to-blue-400 mb-4 md:mb-0 drop-shadow-lg"
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+              >
+                My CATs
+              </motion.h1>
+              <Link href="/create">
+                <motion.button
+                  className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-300 dark:bg-[#BA9901] text-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                 >
-                  <Link
-                    href={`/c?vault=${cat.address}&chainId=${cat.chainId}`}
-                    className="block p-6"
-                  >
-                    <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                      {cat.tokenName || cat.address}
-                    </h2>
-                    <p className="text-md text-gray-600 dark:text-gray-400 mb-4">
-                      Symbol: {cat.tokenSymbol}
-                    </p>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-blue-400 dark:text-yellow-400 bg-blue-100 dark:bg-gray-600 px-2 py-1 rounded-full">
-                        Chain: {cat.chainId}
-                      </span>
-                      <span className="text-sm text-gray-500 dark:text-gray-400">
-                        View Details →
-                      </span>
-                    </div>
-                  </Link>
-                </motion.li>
-              ))}
-            </motion.ul>
-          ) : (
-            <motion.div
-              className="text-center p-8 bg-white dark:bg-gray-800 rounded-xl shadow-md"
+                  <Plus className="w-5 h-5" />
+                  <span>Create New CAT</span>
+                </motion.button>
+              </Link>
+            </div>
+
+            {/* Search and Filter Section */}
+            <motion.div 
+              className="mb-8 flex flex-col md:flex-row gap-4"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
             >
-              <p className="text-xl text-gray-700 dark:text-gray-300">
-                You don&apos;t own any CATs yet.
-              </p>
-              <Link
-                href="/create"
-                className="mt-4 inline-block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded transition-colors duration-300"
-              >
-                Create a CAT
-              </Link>
+              <div className="relative flex-1">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Search className="h-5 w-5 text-blue-500 dark:text-yellow-400" />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Search by token name or symbol..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-3 rounded-xl bg-white/80 dark:bg-[#1a1400]/70 border border-[#bfdbfe] dark:border-yellow-400/20 text-gray-800 dark:text-yellow-100 placeholder-gray-500 dark:placeholder-yellow-200/50 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-yellow-400 focus:border-transparent transition-all duration-300"
+                />
+              </div>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Filter className="h-5 w-5 text-blue-500 dark:text-yellow-400" />
+                </div>
+                <select
+                  value={selectedChainId}
+                  onChange={(e) => setSelectedChainId(e.target.value as SupportedChainId | "all")}
+                  className="pl-10 pr-4 py-3 rounded-xl bg-white/80 dark:bg-[#1a1400]/70 border border-[#bfdbfe] dark:border-yellow-400/20 text-gray-800 dark:text-yellow-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-yellow-400 focus:border-transparent transition-all duration-300 appearance-none cursor-pointer"
+                >
+                  <option value="all">All Chains</option>
+                  {Object.entries(CHAIN_NAMES).map(([chainId, name]) => (
+                    <option key={chainId} value={chainId}>
+                      {name} ({chainId})
+                    </option>
+                  ))}
+                </select>
+                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                  <svg className="h-5 w-5 text-blue-500 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </div>
             </motion.div>
-          )}
+
+            <div className="max-w-6xl mx-auto px-4 text-center mt-18">
+            {isLoading ? (
+              <LoadingState
+                title="Loading Your CATs"
+                message="Please wait while we fetch your Contribution Accounting Tokens..."
+              />
+            ) : error ? (
+              <LoadingState
+                type="error"
+                errorMessage={error}
+              />
+            ) : filteredCATs?.length ? (
+              <motion.div
+                className="grid gap-8 md:grid-cols-2 lg:grid-cols-3"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5, staggerChildren: 0.1 }}
+              >
+                {filteredCATs.map((cat, index) => (
+                  <motion.div
+                    key={`${cat.chainId}-${cat.address}`}
+                    className="group relative"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: index * 0.1 }}
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-[#93c5fd]/30 to-[#60a5fa]/30 dark:from-yellow-400/20 dark:to-blue-400/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-300"></div>
+                    <motion.div
+                      className="relative rounded-2xl p-8 bg-white/80 dark:bg-[#1a1400]/70 border border-[#bfdbfe] dark:border-yellow-400/20 backdrop-blur-lg transition-all duration-300 hover:scale-105 hover:shadow-[0_8px_32px_0_rgba(37,99,235,0.25)] dark:hover:shadow-[0_8px_32px_0_rgba(255,217,0,0.25)] hover:border-blue-300 dark:hover:border-yellow-400"
+                      whileHover={{ y: -8 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <div className="relative z-10 flex flex-col">
+                        <div className="flex items-center justify-between mb-6">
+                          <div className="flex items-center space-x-3">
+                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-300 dark:from-[#FFD600] dark:to-blue-400 flex items-center justify-center text-white font-bold text-xl">
+                              {cat.tokenSymbol.slice(0, 2)}
+                            </div>
+                            <div>
+                              <h2 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-blue-300 dark:from-[#FFD600] dark:to-blue-400">
+                                {cat.tokenName || cat.address}
+                              </h2>
+                              <p className="text-sm text-[#1e40af] dark:text-yellow-100">
+                                {cat.tokenSymbol}
+                              </p>
+                            </div>
+                          </div>
+                          <motion.div
+                            className="w-8 h-8 rounded-full bg-[#dbeafe] dark:bg-yellow-400/20 flex items-center justify-center"
+                            whileHover={{ rotate: 180 }}
+                            transition={{ duration: 0.3 }}
+                          >
+                            <span className="text-blue-500 dark:text-yellow-400 text-lg">→</span>
+                          </motion.div>
+                        </div>
+
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between p-3 rounded-xl bg-[#eff6ff] dark:bg-[#1a1400]/50 border border-[#bfdbfe] dark:border-yellow-400/20">
+                            <span className="text-sm text-[#1e40af] dark:text-yellow-100">Chain ID</span>
+                            <span className="text-sm font-medium text-blue-500 dark:text-yellow-400">{cat.chainId}</span>
+                          </div>
+                          
+                          <div className="p-3 rounded-xl bg-[#eff6ff] dark:bg-[#1a1400]/50 border border-[#bfdbfe] dark:border-yellow-400/20">
+                            <p className="text-xs text-[#1e40af]/70 dark:text-yellow-200/70 mb-1">Contract Address</p>
+                            <p className="text-sm font-mono text-[#1e40af] dark:text-yellow-100 break-all">
+                              {cat.address}
+                            </p>
+                          </div>
+                        </div>
+
+                        <Link 
+                          href={`/c?vault=${cat.address}&chainId=${cat.chainId}`}
+                          className="mt-6 w-full"
+                        >
+                          <motion.button
+                            className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-blue-500 to-blue-300 dark:from-[#FFD600] dark:to-[#BA9901] text-white dark:text-black font-medium hover:from-[#1d4ed8] hover:to-blue-500 dark:hover:from-yellow-400 dark:hover:to-yellow-200 transition-all duration-300"
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                          >
+                            Manage CAT
+                          </motion.button>
+                        </Link>
+                      </div>
+                    </motion.div>
+                  </motion.div>
+                ))}
+              </motion.div>
+            ) : (
+              <motion.div
+                className="text-center p-12 rounded-2xl shadow-lg bg-white/80 dark:bg-[#1a1400]/70 backdrop-blur-lg border border-[#bfdbfe] dark:border-yellow-400/20"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5 }}
+              >
+                <div className="mb-8">
+                  <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-[#93c5fd] to-[#60a5fa] dark:from-yellow-400/20 dark:to-blue-400/20 flex items-center justify-center mb-4">
+                    <Search className="w-10 h-10 text-blue-500 dark:text-yellow-400" />
+                  </div>
+                  <h3 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-blue-300 dark:from-[#FFD600] dark:to-blue-400 mb-4">
+                    No CATs Found
+                  </h3>
+                  <p className="text-lg text-[#1e40af] dark:text-yellow-100">
+                    {searchQuery || selectedChainId !== "all" 
+                      ? "No CATs match your search criteria"
+                      : "Start by creating your first Contribution Accounting Token"}
+                  </p>
+                </div>
+                {!searchQuery && selectedChainId === "all" && (
+                  <Link href="/create">
+                    <motion.button
+                      className="inline-flex items-center space-x-2 px-8 py-4 bg-gradient-to-r from-blue-500 to-blue-300 dark:from-[#FFD600] dark:to-[#BA9901] text-white dark:text-black rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
+                      <Plus className="w-5 h-5" />
+                      <span>Create Your First CAT</span>
+                    </motion.button>
+                  </Link>
+                )}
+              </motion.div>
+            )}
+            </div>
+          </motion.div>
         </div>
       </div>
     </Layout>

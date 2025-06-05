@@ -49,6 +49,7 @@ body {
 
   body {
     @apply bg-background text-foreground;
+    font-family: 'Inter', sans-serif;
   }
 
   h1,
@@ -57,7 +58,8 @@ body {
   h4,
   h5,
   h6 {
-    font-family: "Arial", sans-serif;
+    font-family: 'Inter', sans-serif;
+    @apply font-bold tracking-tight;
   }
 }
 
@@ -75,4 +77,44 @@ body {
 
 html {
   scroll-behavior: smooth;
+}
+
+/* Fix spacing issues */
+main {
+  @apply min-h-[calc(100vh-4rem)] pt-16 pb-8;
+}
+
+/* Modern scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-gray-100 dark:bg-gray-800;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-300 dark:bg-gray-600 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-gray-400 dark:bg-gray-500;
+}
+
+/* Animations */
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
 }
