@@ -291,32 +291,6 @@ export default function InteractionClient() {
     }
   }, [disableTransferRestrictionData, chainId]);
 
-  // Add function to calculate max mintable amount
-  const calculateMaxMintableAmount = useCallback(() => {
-    if (!tokenDetails.currentSupply || !tokenDetails.maxExpansionRate || !tokenDetails.lastMintTimestamp) {
-      return null;
-    }
-
-    // Only calculate if current supply exceeds threshold
-    if (tokenDetails.currentSupply < tokenDetails.thresholdSupply) {
-      return null;
-    }
-
-    const currentSupply = tokenDetails.currentSupply;
-    const maxExpansionRate = tokenDetails.maxExpansionRate;
-    const lastMintTime = tokenDetails.lastMintTimestamp;
-    const currentTime = Math.floor(Date.now() / 1000); // Current time in seconds
-    const elapsedTime = currentTime - lastMintTime;
-    
-    // Calculate max mintable amount based on expansion rate and elapsed time
-    const maxMintableAmount = (currentSupply * maxExpansionRate * elapsedTime) / (365 * 24 * 60 * 60);
-    
-    // Also check against remaining max supply
-    const remainingSupply = tokenDetails.maxSupply - currentSupply;
-    
-    return Math.min(maxMintableAmount, remainingSupply);
-  }, [tokenDetails]);
-
   // Update the mint function to only show toast after transaction
   const handleMint = async () => {
     try {
