@@ -275,18 +275,16 @@ export default function MyCATsPage() {
                     >
                       <div className="relative z-10 flex flex-col">
                         <div className="flex items-center justify-between mb-6">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-300 dark:from-[#FFD600] dark:to-blue-400 flex items-center justify-center text-white font-bold text-xl">
-                              {cat.tokenSymbol.slice(0, 2)}
-                            </div>
-                            <div>
-                              <h2 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-blue-300 dark:from-[#FFD600] dark:to-blue-400">
-                                {cat.tokenName || cat.address}
-                              </h2>
-                              <p className="text-sm text-[#1e40af] dark:text-yellow-100">
-                                {cat.tokenSymbol}
-                              </p>
-                            </div>
+                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-300 dark:from-[#FFD600] dark:to-blue-400 flex items-center justify-center text-white font-bold text-xl">
+                            {cat.tokenSymbol.slice(0, 2)}
+                          </div>
+                          <div className="flex-1 text-center px-4">
+                            <h2 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-blue-300 dark:from-[#FFD600] dark:to-blue-400">
+                              {cat.tokenName || cat.address}
+                            </h2>
+                            <p className="text-sm text-[#1e40af] dark:text-yellow-100">
+                              {cat.tokenSymbol}
+                            </p>
                           </div>
                           <motion.div
                             className="w-8 h-8 rounded-full bg-[#dbeafe] dark:bg-yellow-400/20 flex items-center justify-center"

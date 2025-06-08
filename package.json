@@ -5,6 +5,8 @@
     "hardhat": "^2.22.17"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^5.1.0"
+    "@openzeppelin/contracts": "^5.1.0",
+    "@radix-ui/react-separator": "^1.1.7",
+    "sonner": "^2.0.5"
   }
 }
