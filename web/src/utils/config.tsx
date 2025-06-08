@@ -2,6 +2,7 @@ import {
   mainnet,
   polygon,
   scrollSepolia,
+  base,
 } from "wagmi/chains";
 import {
   getDefaultConfig,
@@ -20,6 +21,7 @@ export const config = getDefaultConfig({
     citreaTestnet,
     ethereumClassic,
     milkomeda,
+    base,
   ],
   ssr: true,
 });
