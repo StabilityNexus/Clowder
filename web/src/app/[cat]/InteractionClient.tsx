@@ -17,7 +17,7 @@ import { motion } from "framer-motion";
 import { LoadingState } from "@/components/ui/loading-state";
 import { ButtonLoadingState } from "@/components/ui/button-loading-state";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { toast } from "sonner";
+import toast from "react-hot-toast";
 import { catExplorer } from "@/utils/catExplorer";
 
 // Define supported chain IDs
