@@ -6,6 +6,8 @@ export const getExplorerUrl = (hash: `0x${string}`, chainId: number): string => 
     5115: "https://explorer.testnet.mantle.xyz/tx/",
     61: "https://explorer.testnet.rsk.co/tx/",
     2001: "https://explorer.testnet.milkomeda.com/tx/",
+    8453: "https://basescan.org/tx/",
+    84531: "https://goerli.basescan.org/tx/",
   };
 
   const baseUrl = baseUrls[chainId];

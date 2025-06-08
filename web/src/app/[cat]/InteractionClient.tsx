@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
-import { Info, Coins, Settings, Unlock, Copy, ArrowUp, Target } from "lucide-react";
+import { Info, Coins, Settings, Unlock, Copy, ArrowUp, Target, Lock } from "lucide-react";
 import { Card,  CardContent } from "@/components/ui/card";
 import { getPublicClient } from "@wagmi/core";
 import { config } from "@/utils/config";
@@ -21,7 +21,7 @@ import toast from "react-hot-toast";
 import { catExplorer } from "@/utils/catExplorer";
 
 // Define supported chain IDs
-type SupportedChainId = 1 | 137 | 534351 | 5115 | 61 | 2001;
+type SupportedChainId = 137 | 534351 | 5115 | 61 | 8453;
 
 interface TokenDetailsState {
   tokenName: string;
@@ -80,9 +80,14 @@ export default function InteractionClient() {
     hash: revokeMinterRoleData,
   });
 
+  // Add dialog open states
+  const [isMaxSupplyDialogOpen, setIsMaxSupplyDialogOpen] = useState(false);
+  const [isThresholdDialogOpen, setIsThresholdDialogOpen] = useState(false);
+  const [isExpansionRateDialogOpen, setIsExpansionRateDialogOpen] = useState(false);
+
   // Type guard for chain ID validation
   const isValidChainId = useCallback((chainId: number): chainId is SupportedChainId => {
-    const validChainIds: SupportedChainId[] = [1, 137, 534351, 5115, 61, 2001];
+    const validChainIds: SupportedChainId[] = [ 137, 534351, 5115, 61, 8453];
     return validChainIds.includes(chainId as SupportedChainId);
   }, []);
 
@@ -267,8 +272,11 @@ export default function InteractionClient() {
         chainId: chainId!,
         message: "Max supply updated successfully!",
       });
+      // Refresh token details
+      getTokenDetails();
+      setIsSigning(false);
     }
-  }, [reduceMaxSupplyData, chainId]);
+  }, [reduceMaxSupplyData, chainId, getTokenDetails]);
 
   useEffect(() => {
     if (reduceThresholdSupplyData) {
@@ -277,8 +285,11 @@ export default function InteractionClient() {
         chainId: chainId!,
         message: "Threshold supply updated successfully!",
       });
+      // Refresh token details
+      getTokenDetails();
+      setIsSigning(false);
     }
-  }, [reduceThresholdSupplyData, chainId]);
+  }, [reduceThresholdSupplyData, chainId, getTokenDetails]);
 
   useEffect(() => {
     if (reduceMaxExpansionRateData) {
@@ -287,8 +298,11 @@ export default function InteractionClient() {
         chainId: chainId!,
         message: "Max expansion rate updated successfully!",
       });
+      // Refresh token details
+      getTokenDetails();
+      setIsSigning(false);
     }
-  }, [reduceMaxExpansionRateData, chainId]);
+  }, [reduceMaxExpansionRateData, chainId, getTokenDetails]);
 
   useEffect(() => {
     if (disableTransferRestrictionData) {
@@ -297,10 +311,36 @@ export default function InteractionClient() {
         chainId: chainId!,
         message: "Transfer restriction disabled successfully!",
       });
+      // Refresh token details
+      getTokenDetails();
+      setIsSigning(false);
     }
-  }, [disableTransferRestrictionData, chainId]);
+  }, [disableTransferRestrictionData, chainId, getTokenDetails]);
 
-  // Update the mint function to only show toast after transaction
+  useEffect(() => {
+    if (grantMinterRoleData) {
+      showTransactionToast({
+        hash: grantMinterRoleData,
+        chainId: chainId!,
+        message: "Minter role granted successfully!",
+      });
+      setMinterAddress("");
+      setIsSigning(false);
+    }
+  }, [grantMinterRoleData, chainId]);
+
+  useEffect(() => {
+    if (revokeMinterRoleData) {
+      showTransactionToast({
+        hash: revokeMinterRoleData,
+        chainId: chainId!,
+        message: "Minter role revoked successfully!",
+      });
+      setMinterAddress("");
+      setIsSigning(false);
+    }
+  }, [revokeMinterRoleData, chainId]);
+
   const handleMint = async () => {
     try {
       setIsSigning(true);
@@ -322,7 +362,6 @@ export default function InteractionClient() {
     }
   };
 
-  // Update the reduceMaxSupply function
   const handleReduceMaxSupply = async () => {
     try {
       setIsSigning(true);
@@ -340,12 +379,10 @@ export default function InteractionClient() {
         success: false,
         message: "Failed to update max supply",
       });
-    } finally {
       setIsSigning(false);
     }
   };
 
-  // Update the reduceThresholdSupply function
   const handleReduceThresholdSupply = async () => {
     try {
       setIsSigning(true);
@@ -363,12 +400,10 @@ export default function InteractionClient() {
         success: false,
         message: "Failed to update threshold supply",
       });
-    } finally {
       setIsSigning(false);
     }
   };
 
-  // Update the reduceMaxExpansionRate function
   const handleReduceMaxExpansionRate = async () => {
     try {
       setIsSigning(true);
@@ -386,12 +421,10 @@ export default function InteractionClient() {
         success: false,
         message: "Failed to update max expansion rate",
       });
-    } finally {
       setIsSigning(false);
     }
   };
 
-  // Update the disableTransferRestriction function
   const handleDisableTransferRestriction = async () => {
     try {
       setIsSigning(true);
@@ -408,7 +441,6 @@ export default function InteractionClient() {
         success: false,
         message: "Failed to disable transfer restriction",
       });
-    } finally {
       setIsSigning(false);
     }
   };
@@ -435,7 +467,6 @@ export default function InteractionClient() {
         success: false,
         message: "Failed to grant minter role",
       });
-    } finally {
       setIsSigning(false);
     }
   };
@@ -462,48 +493,14 @@ export default function InteractionClient() {
         success: false,
         message: "Failed to revoke minter role",
       });
-    } finally {
       setIsSigning(false);
     }
   };
-
-  useEffect(() => {
-    if (grantMinterRoleData) {
-      showTransactionToast({
-        hash: grantMinterRoleData,
-        chainId: chainId!,
-        message: "Minter role granted successfully!",
-      });
-      setMinterAddress("");
-    }
-  }, [grantMinterRoleData, chainId]);
-
-  useEffect(() => {
-    if (revokeMinterRoleData) {
-      showTransactionToast({
-        hash: revokeMinterRoleData,
-        chainId: chainId!,
-        message: "Minter role revoked successfully!",
-      });
-      setMinterAddress("");
-    }
-  }, [revokeMinterRoleData, chainId]);
 
   const handleCopyAddress = () => {
     navigator.clipboard.writeText(tokenAddress);
     toast.success("Address copied to clipboard!");
   };
-
-  // Add a polling effect to keep max mintable amount up to date
-  useEffect(() => {
-    if (tokenDetails.currentSupply >= tokenDetails.thresholdSupply) {
-      const interval = setInterval(() => {
-        getTokenDetails();
-      }, 30000); // Update every 30 seconds
-
-      return () => clearInterval(interval);
-    }
-  }, [tokenDetails.currentSupply, tokenDetails.thresholdSupply, getTokenDetails]);
 
   if (isLoading) {
     return (
@@ -553,13 +550,13 @@ export default function InteractionClient() {
                     </div>
                     <p className="text-lg font-bold text-blue-400 dark:text-yellow-200">{tokenDetails.maxSupply} {tokenDetails.tokenSymbol}</p>
                   </div>
-                  <Dialog>
+                  <Dialog open={isMaxSupplyDialogOpen} onOpenChange={setIsMaxSupplyDialogOpen}>
                     <DialogTrigger asChild>
                       <Button className="w-full h-8 text-sm bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl">
                         Reduce Max Supply
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-[425px] bg-white dark:bg-[#1a1400]/70 border border-white/30 dark:border-yellow-400/20 backdrop-blur-lg rounded-2xl shadow-2xl transition-all duration-300 hover:scale-105 hover:shadow-[0_8px_32px_0_rgba(90,180,255,0.25)] dark:hover:shadow-[0_8px_32px_0_rgba(255,217,0,0.25)] hover:border-blue-400 dark:hover:border-yellow-400 before:absolute before:inset-0 before:rounded-2xl before:bg-gradient-to-br before:from-blue-200/30 before:to-transparent dark:before:from-yellow-400/20 dark:before:to-transparent before:opacity-0 group-hover:before:opacity-100 before:transition-opacity before:duration-300">
+                    <DialogContent className="sm:max-w-[425px] bg-white dark:bg-[#1a1400]/70 border border-white/30 dark:border-yellow-400/20 backdrop-blur-lg rounded-2xl shadow-2xl">
                       <DialogHeader>
                         <DialogTitle className="text-xl font-bold text-blue-400 dark:text-yellow-200">Reduce Max Supply</DialogTitle>
                         <p className="text-sm text-gray-600 dark:text-yellow-200 mt-2">
@@ -581,7 +578,10 @@ export default function InteractionClient() {
                           </p>
                         </div>
                         <Button
-                          onClick={handleReduceMaxSupply}
+                          onClick={() => {
+                            handleReduceMaxSupply();
+                            setIsMaxSupplyDialogOpen(false);
+                          }}
                           disabled={!newMaxSupply || isReducingMaxSupply || isSigning}
                           className="w-full h-10 bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl"
                         >
@@ -604,13 +604,13 @@ export default function InteractionClient() {
                     </div>
                     <p className="text-lg font-bold text-blue-400 dark:text-yellow-200">{tokenDetails.thresholdSupply} {tokenDetails.tokenSymbol}</p>
                   </div>
-                  <Dialog>
+                  <Dialog open={isThresholdDialogOpen} onOpenChange={setIsThresholdDialogOpen}>
                     <DialogTrigger asChild>
                       <Button className="w-full h-8 text-sm bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl">
                         Reduce Threshold
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-[425px] bg-white dark:bg-[#1a1400]/70 border border-white/30 dark:border-yellow-400/20 backdrop-blur-lg rounded-2xl shadow-2xl transition-all duration-300 hover:scale-105 hover:shadow-[0_8px_32px_0_rgba(90,180,255,0.25)] dark:hover:shadow-[0_8px_32px_0_rgba(255,217,0,0.25)] hover:border-blue-400 dark:hover:border-yellow-400 before:absolute before:inset-0 before:rounded-2xl before:bg-gradient-to-br before:from-blue-200/30 before:to-transparent dark:before:from-yellow-400/20 dark:before:to-transparent before:opacity-0 group-hover:before:opacity-100 before:transition-opacity before:duration-300">
+                    <DialogContent className="sm:max-w-[425px] bg-white dark:bg-[#1a1400]/70 border border-white/30 dark:border-yellow-400/20 backdrop-blur-lg rounded-2xl shadow-2xl">
                       <DialogHeader>
                         <DialogTitle className="text-xl font-bold text-blue-400 dark:text-yellow-200">Reduce Threshold Supply</DialogTitle>
                         <p className="text-sm text-gray-600 dark:text-yellow-200 mt-2">
@@ -632,7 +632,10 @@ export default function InteractionClient() {
                           </p>
                         </div>
                         <Button
-                          onClick={handleReduceThresholdSupply}
+                          onClick={() => {
+                            handleReduceThresholdSupply();
+                            setIsThresholdDialogOpen(false);
+                          }}
                           disabled={!newThresholdSupply || isReducingThresholdSupply || isSigning}
                           className="w-full h-10 bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl"
                         >
@@ -655,13 +658,13 @@ export default function InteractionClient() {
                     </div>
                     <p className="text-lg font-bold text-blue-400 dark:text-yellow-200">{tokenDetails.maxExpansionRate} %</p>
                   </div>
-                  <Dialog>
+                  <Dialog open={isExpansionRateDialogOpen} onOpenChange={setIsExpansionRateDialogOpen}>
                     <DialogTrigger asChild>
                       <Button className="w-full h-8 text-sm bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl">
                         Reduce Rate
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-[425px] bg-white dark:bg-[#1a1400]/70 border border-white/30 dark:border-yellow-400/20 backdrop-blur-lg rounded-2xl shadow-2xl transition-all duration-300 hover:scale-105 hover:shadow-[0_8px_32px_0_rgba(90,180,255,0.25)] dark:hover:shadow-[0_8px_32px_0_rgba(255,217,0,0.25)] hover:border-blue-400 dark:hover:border-yellow-400 before:absolute before:inset-0 before:rounded-2xl before:bg-gradient-to-br before:from-blue-200/30 before:to-transparent dark:before:from-yellow-400/20 dark:before:to-transparent before:opacity-0 group-hover:before:opacity-100 before:transition-opacity before:duration-300">
+                    <DialogContent className="sm:max-w-[425px] bg-white dark:bg-[#1a1400]/70 border border-white/30 dark:border-yellow-400/20 backdrop-blur-lg rounded-2xl shadow-2xl">
                       <DialogHeader>
                         <DialogTitle className="text-xl font-bold text-blue-400 dark:text-yellow-200">Reduce Max Expansion Rate</DialogTitle>
                         <p className="text-sm text-gray-600 dark:text-yellow-200 mt-2">
@@ -683,7 +686,10 @@ export default function InteractionClient() {
                           </p>
                         </div>
                         <Button
-                          onClick={handleReduceMaxExpansionRate}
+                          onClick={() => {
+                            handleReduceMaxExpansionRate();
+                            setIsExpansionRateDialogOpen(false);
+                          }}
                           disabled={!newMaxExpansionRate || isReducingMaxExpansionRate || isSigning}
                           className="w-full h-10 bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl"
                         >
@@ -725,9 +731,11 @@ export default function InteractionClient() {
                         </Button>
                       </>
                     ) : (
-                      <p className="text-sm text-gray-600 dark:text-yellow-200">
-                        Transfers to any address are already enabled
-                      </p>
+                      <>
+                        <p className="text-sm text-gray-600 dark:text-yellow-200">
+                          Transfers to any address are already enabled
+                        </p>
+                      </>
                     )}
                   </div>
                 </div>

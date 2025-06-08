@@ -6,6 +6,8 @@ export const catExplorer = (hash: `0x${string}`, chainId: number): string => {
       5115: "https://explorer.testnet.mantle.xyz/address/",
       61: "https://explorer.testnet.rsk.co/address/",
       2001: "https://explorer.testnet.milkomeda.com/address/",
+      8453: "https://basescan.org/address/",
+      84531: "https://goerli.basescan.org/address/",
     };
   
     const baseUrl = baseUrls[chainId];

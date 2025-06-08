@@ -19,6 +19,7 @@ import { showTransactionToast } from "@/components/ui/transaction-toast";
 import Link from "next/link";
 import { LoadingState } from "@/components/ui/loading-state";
 import { ButtonLoadingState } from "@/components/ui/button-loading-state";
+import { getPublicClient } from "@wagmi/core";
 
 interface DeployContractProps {
   tokenName: string;
@@ -189,13 +190,40 @@ export default function CreateCAT() {
       };
 
       saveTransaction(txDetails);
-      showTransactionToast({
-        hash: deployData,
-        chainId: config.state.chainId,
-        message: "CAT contract deployed successfully!",
-      });
-      router.push("/my-cats");
-      setIsDeploying(false);
+      
+      // Wait for transaction to be mined before showing success toast and redirecting
+      const checkTransaction = async () => {
+        try {
+          const publicClient = getPublicClient(config);
+          if (!publicClient) {
+            throw new Error("Public client not available");
+          }
+          await publicClient.waitForTransactionReceipt({ hash: deployData });
+          
+          showTransactionToast({
+            hash: deployData,
+            chainId: config.state.chainId,
+            message: "CAT contract deployed successfully!",
+          });
+          
+          // Add a small delay before redirecting to ensure the blockchain state is updated
+          setTimeout(() => {
+            router.push("/my-cats");
+            setIsDeploying(false);
+          }, 2000);
+        } catch (error) {
+          console.error("Error waiting for transaction:", error);
+          showTransactionToast({
+            hash: deployData,
+            chainId: config.state.chainId,
+            success: false,
+            message: "Failed to deploy CAT contract",
+          });
+          setIsDeploying(false);
+        }
+      };
+
+      checkTransaction();
     }
   }, [deployData, formData, router, saveTransaction]);
 

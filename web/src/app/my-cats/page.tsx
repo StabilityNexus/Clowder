@@ -16,16 +16,15 @@ import { showTransactionToast } from "@/components/ui/transaction-toast";
 import { LoadingState } from "@/components/ui/loading-state";
 
 // Define supported chain IDs
-type SupportedChainId = 1 | 137 | 534351 | 5115 | 61 | 2001;
+type SupportedChainId =  137 | 534351 | 5115 | 61 |  8453;
 
 // Chain ID to name mapping
 const CHAIN_NAMES: Record<SupportedChainId, string> = {
-  1: "Ethereum",
   137: "Polygon",
   534351: "Scroll Sepolia",
-  5115: "Citrea",
+  5115: "Citrea Testnet",
   61: "Ethereum Classic",
-  2001: "Milkomeda"
+  8453: "Base Mainnet",
 };
 
 interface CatDetails {
@@ -39,7 +38,7 @@ interface CatDetails {
 const isValidChainId = (
   chainId: number | string
 ): chainId is SupportedChainId => {
-  const validChainIds: SupportedChainId[] = [1, 137, 534351, 5115, 61, 2001];
+  const validChainIds: SupportedChainId[] = [ 137, 534351, 5115, 61, 8453];
   return validChainIds.includes(Number(chainId) as SupportedChainId);
 };
 
