@@ -22,6 +22,6 @@ export const config = getDefaultConfig({
     ethereumClassic,
     milkomeda,
     base,
-  ],
-  ssr: true,
+  ] as const,
+  ssr: false, // Disable SSR for static export
 });
