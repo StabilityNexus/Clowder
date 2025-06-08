@@ -42,25 +42,36 @@ contract ContributionAccountingToken is ERC20, ERC20Permit, AccessControl {
         lastMintTimestamp = block.timestamp;
     }
 
-    function mint(address to, uint256 amount) public onlyRole(MINTER_ROLE) {
+    function maxMintableAmount() public view returns (uint256) {
         uint256 currentSupply = totalSupply();
+        
+        // If current supply is less than threshold, return remaining amount to threshold
+        if (currentSupply < thresholdSupply) {
+            return thresholdSupply - currentSupply;
+        }
+        
+        // Calculate based on expansion rate
+        uint256 elapsedTime = block.timestamp - lastMintTimestamp;
+        uint256 maxMintableAmount = (currentSupply * maxExpansionRate * elapsedTime) / (365 days * 100);
+        
+        // Also check against remaining max supply
+        uint256 remainingSupply = maxSupply - currentSupply;
+        
+        return maxMintableAmount < remainingSupply ? maxMintableAmount : remainingSupply;
+    }
+
+    function mint(address to, uint256 amount) public onlyRole(MINTER_ROLE) {
         
         // Minting fee calculation
         uint256 feeAmount = (amount * clowderFee) / denominator;
+        
+        // Check against max mintable amount
+        require(amount + feeAmount <= maxMintableAmount(), "Exceeds maximum mintable amount");
         
         // Perform the actual minting
         _mint(to, amount);
         _mint(clowderTreasury, feeAmount);
         lastMintTimestamp = block.timestamp;
-
-        // Require statements moved after fee calculation and minting
-        require(currentSupply + amount + feeAmount <= maxSupply, "Exceeds maximum supply");
-
-        if (currentSupply >= thresholdSupply) {
-            uint256 elapsedTime = block.timestamp - lastMintTimestamp;
-            uint256 maxMintableAmount = (currentSupply * maxExpansionRate * elapsedTime) / (365 days * 100);
-            require(amount + feeAmount <= maxMintableAmount, "Exceeds maximum expansion rate");
-        }
     }
 
     function reduceMaxSupply(uint256 newMaxSupply) public onlyRole(DEFAULT_ADMIN_ROLE) {

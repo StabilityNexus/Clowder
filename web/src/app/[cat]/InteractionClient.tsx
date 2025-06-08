@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
-import { Info, Coins, Settings, ArrowUpRight, ArrowDownRight, Unlock } from "lucide-react";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Info, Coins, Settings, Unlock, Copy, ArrowUp, Target } from "lucide-react";
+import { Card,  CardContent } from "@/components/ui/card";
 import { getPublicClient } from "@wagmi/core";
 import { config } from "@/utils/config";
 import { useSearchParams } from "next/navigation";
@@ -16,6 +16,8 @@ import { showTransactionToast } from "@/components/ui/transaction-toast";
 import { motion } from "framer-motion";
 import { LoadingState } from "@/components/ui/loading-state";
 import { ButtonLoadingState } from "@/components/ui/button-loading-state";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { toast } from "sonner";
 
 // Define supported chain IDs
 type SupportedChainId = 1 | 137 | 534351 | 5115 | 61 | 2001;
@@ -26,12 +28,14 @@ interface TokenDetailsState {
   maxSupply: number;
   thresholdSupply: number;
   maxExpansionRate: number;
+  currentSupply: number;
   transactionHash: string;
   timestamp: string;
+  lastMintTimestamp: number;
+  maxMintableAmount: number;
 }
 
 export default function InteractionClient() {
-  const { address } = useAccount();
   const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,7 +44,7 @@ export default function InteractionClient() {
   const [newThresholdSupply, setNewThresholdSupply] = useState("");
   const [newMaxExpansionRate, setNewMaxExpansionRate] = useState("");
   const [transferRestricted, setTransferRestricted] = useState<boolean>(true);
-
+  const [mintToAddress, setMintToAddress] = useState<string>("");
 
   const [tokenAddress, setTokenAddress] = useState<`0x${string}`>("0x0");
   const [chainId, setChainId] = useState<SupportedChainId | null>(null);
@@ -51,12 +55,27 @@ export default function InteractionClient() {
     maxSupply: 0,
     thresholdSupply: 0,
     maxExpansionRate: 0,
+    currentSupply: 0,
     transactionHash: "",
     timestamp: "",
+    lastMintTimestamp: 0,
+    maxMintableAmount: 0,
   });
 
   // Add new state for transaction signing
   const [isSigning, setIsSigning] = useState(false);
+
+  const [minterAddress, setMinterAddress] = useState<string>("");
+  const { writeContract: grantMinterRole, data: grantMinterRoleData } = useWriteContract();
+  const { writeContract: revokeMinterRole, data: revokeMinterRoleData } = useWriteContract();
+
+  const { isLoading: isGrantingMinterRole } = useWaitForTransactionReceipt({
+    hash: grantMinterRoleData,
+  });
+
+  const { isLoading: isRevokingMinterRole } = useWaitForTransactionReceipt({
+    hash: revokeMinterRoleData,
+  });
 
   // Type guard for chain ID validation
   const isValidChainId = useCallback((chainId: number): chainId is SupportedChainId => {
@@ -109,7 +128,7 @@ export default function InteractionClient() {
         throw new Error(`No public client available for chain ${chainId}`);
       }
 
-      const [name, symbol, maxSupply, threshold, expansionRate] =
+      const [name, symbol, maxSupply, threshold, expansionRate, currentSupply, lastMint, maxMintable] =
         (await Promise.all([
           publicClient.readContract({
             address: tokenAddress,
@@ -136,7 +155,22 @@ export default function InteractionClient() {
             abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
             functionName: "maxExpansionRate",
           }),
-        ])) as [string, string, bigint, bigint, bigint];
+          publicClient.readContract({
+            address: tokenAddress,
+            abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
+            functionName: "totalSupply",
+          }),
+          publicClient.readContract({
+            address: tokenAddress,
+            abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
+            functionName: "lastMintTimestamp",
+          }),
+          publicClient.readContract({
+            address: tokenAddress,
+            abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
+            functionName: "maxMintableAmount",
+          }),
+        ])) as [string, string, bigint, bigint, bigint, bigint, bigint, bigint];
 
       if (!name || !symbol) {
         throw new Error("Invalid token contract");
@@ -148,8 +182,11 @@ export default function InteractionClient() {
         maxSupply: Number(maxSupply) / 10 ** 18,
         thresholdSupply: Number(threshold) / 10 ** 18,
         maxExpansionRate: Number(expansionRate) / 100,
+        currentSupply: Number(currentSupply) / 10 ** 18,
         transactionHash: tokenAddress,
         timestamp: new Date().toISOString(),
+        lastMintTimestamp: Number(lastMint),
+        maxMintableAmount: Number(maxMintable) / 10 ** 18,
       });
 
       const restricted = (await publicClient.readContract({
@@ -208,8 +245,11 @@ export default function InteractionClient() {
         chainId: chainId!,
         message: "Tokens minted successfully!",
       });
+      // Refresh token details to get updated lastMintTimestamp and supply
+      getTokenDetails();
+      setIsSigning(false);
     }
-  }, [mintData, chainId]);
+  }, [mintData, chainId, getTokenDetails]);
 
   useEffect(() => {
     if (reduceMaxSupplyData) {
@@ -251,7 +291,33 @@ export default function InteractionClient() {
     }
   }, [disableTransferRestrictionData, chainId]);
 
-  // Update the mint function
+  // Add function to calculate max mintable amount
+  const calculateMaxMintableAmount = useCallback(() => {
+    if (!tokenDetails.currentSupply || !tokenDetails.maxExpansionRate || !tokenDetails.lastMintTimestamp) {
+      return null;
+    }
+
+    // Only calculate if current supply exceeds threshold
+    if (tokenDetails.currentSupply < tokenDetails.thresholdSupply) {
+      return null;
+    }
+
+    const currentSupply = tokenDetails.currentSupply;
+    const maxExpansionRate = tokenDetails.maxExpansionRate;
+    const lastMintTime = tokenDetails.lastMintTimestamp;
+    const currentTime = Math.floor(Date.now() / 1000); // Current time in seconds
+    const elapsedTime = currentTime - lastMintTime;
+    
+    // Calculate max mintable amount based on expansion rate and elapsed time
+    const maxMintableAmount = (currentSupply * maxExpansionRate * elapsedTime) / (365 * 24 * 60 * 60);
+    
+    // Also check against remaining max supply
+    const remainingSupply = tokenDetails.maxSupply - currentSupply;
+    
+    return Math.min(maxMintableAmount, remainingSupply);
+  }, [tokenDetails]);
+
+  // Update the mint function to only show toast after transaction
   const handleMint = async () => {
     try {
       setIsSigning(true);
@@ -259,7 +325,7 @@ export default function InteractionClient() {
         abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
         address: tokenAddress,
         functionName: "mint",
-        args: [address, parseEther(mintAmount)]
+        args: [mintToAddress as `0x${string}`, parseEther(mintAmount)]
       });
     } catch (error) {
       console.error("Error minting tokens:", error);
@@ -269,7 +335,6 @@ export default function InteractionClient() {
         success: false,
         message: "Failed to mint tokens",
       });
-    } finally {
       setIsSigning(false);
     }
   };
@@ -365,6 +430,88 @@ export default function InteractionClient() {
     }
   };
 
+  const handleGrantMinterRole = async () => {
+    try {
+      setIsSigning(true);
+      await grantMinterRole({
+        abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
+        address: tokenAddress,
+        functionName: "grantMinterRole",
+        args: [minterAddress as `0x${string}`]
+      });
+    } catch (error) {
+      console.error("Error granting minter role:", error);
+      showTransactionToast({
+        hash: "0x0" as `0x${string}`,
+        chainId: chainId!,
+        success: false,
+        message: "Failed to grant minter role",
+      });
+    } finally {
+      setIsSigning(false);
+    }
+  };
+
+  const handleRevokeMinterRole = async () => {
+    try {
+      setIsSigning(true);
+      await revokeMinterRole({
+        abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
+        address: tokenAddress,
+        functionName: "revokeMinterRole",
+        args: [minterAddress as `0x${string}`]
+      });
+    } catch (error) {
+      console.error("Error revoking minter role:", error);
+      showTransactionToast({
+        hash: "0x0" as `0x${string}`,
+        chainId: chainId!,
+        success: false,
+        message: "Failed to revoke minter role",
+      });
+    } finally {
+      setIsSigning(false);
+    }
+  };
+
+  useEffect(() => {
+    if (grantMinterRoleData) {
+      showTransactionToast({
+        hash: grantMinterRoleData,
+        chainId: chainId!,
+        message: "Minter role granted successfully!",
+      });
+      setMinterAddress("");
+    }
+  }, [grantMinterRoleData, chainId]);
+
+  useEffect(() => {
+    if (revokeMinterRoleData) {
+      showTransactionToast({
+        hash: revokeMinterRoleData,
+        chainId: chainId!,
+        message: "Minter role revoked successfully!",
+      });
+      setMinterAddress("");
+    }
+  }, [revokeMinterRoleData, chainId]);
+
+  const handleCopyAddress = () => {
+    navigator.clipboard.writeText(tokenDetails.transactionHash);
+    toast.success("Address copied to clipboard!");
+  };
+
+  // Add a polling effect to keep max mintable amount up to date
+  useEffect(() => {
+    if (tokenDetails.currentSupply >= tokenDetails.thresholdSupply) {
+      const interval = setInterval(() => {
+        getTokenDetails();
+      }, 30000); // Update every 30 seconds
+
+      return () => clearInterval(interval);
+    }
+  }, [tokenDetails.currentSupply, tokenDetails.thresholdSupply, getTokenDetails]);
+
   if (isLoading) {
     return (
       <LoadingState
@@ -385,9 +532,9 @@ export default function InteractionClient() {
 
   return (
     <div className="min-h-screen mx-auto">
-      <div className="max-w-7xl mx-auto space-y-8 px-4 py-12">
+      <div className="max-w-7xl mx-auto space-y-8 px-4 py-8">
         {/* Header Section */}
-        <div className="text-center mb-12">
+        <div className="text-center mb-8">
           <motion.h1 
             className="text-4xl md:text-5xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-blue-200 dark:from-[#FFD600] dark:to-white mb-4 md:mb-0 drop-shadow-lg"
             initial={{ opacity: 0, y: 20 }}
@@ -396,209 +543,309 @@ export default function InteractionClient() {
           >
             {tokenDetails.tokenSymbol} Token Management
           </motion.h1>
-          <motion.p 
-            className="text-lg text-gray-600 font-bold dark:text-yellow-100 mt-4"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-          >
-            {tokenDetails.tokenName}
-          </motion.p>
         </div>
 
-        {/* Token Overview Card */}
-        <Card className="group relative rounded-2xl p-8 shadow-2xl bg-white/60 dark:bg-[#1a1400]/70 border border-white/30 dark:border-yellow-400/20 backdrop-blur-lg transition-all duration-300 hover:scale-105 hover:shadow-[0_8px_32px_0_rgba(90,180,255,0.25)] dark:hover:shadow-[0_8px_32px_0_rgba(255,217,0,0.25)] hover:border-blue-400 dark:hover:border-yellow-400 before:absolute before:inset-0 before:rounded-2xl before:bg-gradient-to-br before:from-blue-200/30 before:to-transparent dark:before:from-yellow-400/20 dark:before:to-transparent before:opacity-0 group-hover:before:opacity-100 before:transition-opacity before:duration-300">
-          <CardHeader className="border-b border-gray-200 dark:border-gray-800">
-            <CardTitle className="flex items-center gap-2 text-3xl text-blue-400 dark:text-yellow-200">
-              <Info className="h-6 w-6 text-blue-400 dark:text-[#FFD600]" />
-              Token Overview
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="group relative rounded-2xl p-6 shadow-2xl bg-white/60 dark:bg-[#1a1400]/70 border border-white/30 dark:border-yellow-400/20 backdrop-blur-lg transition-all duration-300 hover:scale-105 hover:shadow-[0_8px_32px_0_rgba(90,180,255,0.25)] dark:hover:shadow-[0_8px_32px_0_rgba(255,217,0,0.25)] hover:border-blue-400 dark:hover:border-yellow-400">
-                <div className="flex items-center gap-2 mb-2">
-                  <Coins className="h-5 w-5 text-green-500 dark:text-[#FFD600]" />
-                  <h3 className="text-lg font-semibold text-blue-400 dark:text-yellow-200">Max Supply</h3>
-                </div>
-                <p className="text-3xl font-semibold text-gray-600 dark:text-yellow-200">
-                  {tokenDetails.maxSupply}
-                </p>
-              </div>
-              <div className="group relative rounded-2xl p-6 shadow-2xl bg-white/60 dark:bg-[#1a1400]/70 border border-white/30 dark:border-yellow-400/20 backdrop-blur-lg transition-all duration-300 hover:scale-105 hover:shadow-[0_8px_32px_0_rgba(90,180,255,0.25)] dark:hover:shadow-[0_8px_32px_0_rgba(255,217,0,0.25)] hover:border-blue-400 dark:hover:border-yellow-400">
-                <div className="flex items-center gap-2 mb-2">
-                  <ArrowUpRight className="h-5 w-5 text-blue-400 dark:text-[#FFD600]" />
-                  <h3 className="text-lg font-semibold text-blue-400 dark:text-yellow-200">Threshold Supply</h3>
-                </div>
-                <p className="text-3xl font-semibold text-gray-600 dark:text-yellow-200">
-                  {tokenDetails.thresholdSupply}
-                </p>
-              </div>
-              <div className="group relative rounded-2xl p-6 shadow-2xl bg-white/60 dark:bg-[#1a1400]/70 border border-white/30 dark:border-yellow-400/20 backdrop-blur-lg transition-all duration-300 hover:scale-105 hover:shadow-[0_8px_32px_0_rgba(90,180,255,0.25)] dark:hover:shadow-[0_8px_32px_0_rgba(255,217,0,0.25)] hover:border-blue-400 dark:hover:border-yellow-400">
-                <div className="flex items-center gap-2 mb-2">
-                  <ArrowDownRight className="h-5 w-5 text-purple-500 dark:text-[#FFD600]" />
-                  <h3 className="text-lg font-semibold text-blue-400 dark:text-yellow-200">Max Expansion Rate</h3>
-                </div>
-                <p className="text-3xl font-semibold text-gray-600 dark:text-yellow-200">
-                  {tokenDetails.maxExpansionRate}%
-                </p>
-              </div>
-            </div>
-            <div className="mt-6 group relative rounded-2xl p-6 shadow-2xl bg-white/60 dark:bg-[#1a1400]/70 border border-white/30 dark:border-yellow-400/20 backdrop-blur-lg transition-all duration-300 hover:scale-105 hover:shadow-[0_8px_32px_0_rgba(90,180,255,0.25)] dark:hover:shadow-[0_8px_32px_0_rgba(255,217,0,0.25)] hover:border-blue-400 dark:hover:border-yellow-400">
-              <div className="flex items-center gap-2 mb-2">
-                <Info className="h-5 w-5 text-gray-500 dark:text-[#FFD600]" />
-                <h3 className="text-lg font-semibold text-blue-400 dark:text-yellow-200">Contract Address</h3>
-              </div>
-              <p className="text-sm font-mono text-gray-600 dark:text-yellow-100 break-all">
-                {tokenDetails.transactionHash}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Mint Tokens Card */}
+        {/* Combined Token Overview and Admin Functions Card */}
         <Card className="group relative rounded-2xl p-8 shadow-2xl bg-white/60 dark:bg-[#1a1400]/70 border border-white/30 dark:border-yellow-400/20 backdrop-blur-lg transition-all duration-300 hover:scale-105 hover:shadow-[0_8px_32px_0_rgba(90,180,255,0.25)] dark:hover:shadow-[0_8px_32px_0_rgba(255,217,0,0.25)] hover:border-blue-400 dark:hover:border-yellow-400">
-          <CardHeader className="border-b border-gray-200 dark:border-gray-800">
-            <CardTitle className="flex items-center gap-2 text-3xl text-blue-400 dark:text-yellow-200">
-              <Coins className="h-6 w-6 text-green-500 dark:text-[#FFD600]" />
-              Mint Tokens
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pt-6">
-            <div className="max-w-md mx-auto space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="mintAmount" className="text-lg font-bold text-gray-600  dark:text-yellow-200">Amount to Mint</Label>
-                <Input
-                  id="mintAmount"
-                  type="number"
-                  placeholder="Enter amount"
-                  value={mintAmount}
-                  onChange={(e) => setMintAmount(e.target.value)}
-                  className="h-12 text-lg bg-white/60 dark:bg-[#1a1400]/70 border-2 border-gray-200 dark:border-yellow-400/20 text-gray-600 dark:text-yellow-200"
-                />
-              </div>
-              <Button
-                onClick={handleMint}
-                disabled={!mintAmount || isMinting || isSigning}
-                className="w-full h-12 text-lg bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl"
-              >
-                {isMinting || isSigning ? (
-                  <ButtonLoadingState text={isSigning ? "Waiting for signature..." : "Processing..."} />
-                ) : (
-                  "Mint Tokens"
-                )}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Admin Functions Card */}
-        <Card className="group relative rounded-2xl p-8 shadow-2xl bg-white/60 dark:bg-[#1a1400]/70 border border-white/30 dark:border-yellow-400/20 backdrop-blur-lg transition-all duration-300 hover:scale-105 hover:shadow-[0_8px_32px_0_rgba(90,180,255,0.25)] dark:hover:shadow-[0_8px_32px_0_rgba(255,217,0,0.25)] hover:border-blue-400 dark:hover:border-yellow-400">
-          <CardHeader className="border-b border-gray-200 dark:border-gray-800">
-            <CardTitle className="flex items-center gap-2 text-3xl text-blue-400 dark:text-yellow-200">
-              <Settings className="h-6 w-6 text-blue-400 dark:text-[#FFD600]" />
-              Admin Functions
-            </CardTitle>
-          </CardHeader>
+          
           <CardContent className="pt-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="newMaxSupply" className="text-lg font-bold text-gray-600 dark:text-yellow-200">New Max Supply</Label>
-                  <Input
-                    id="newMaxSupply"
-                    type="number"
-                    placeholder="Enter new max supply"
-                    value={newMaxSupply}
-                    onChange={(e) => setNewMaxSupply(e.target.value)}
-                    className="h-12 text-lg bg-white/60 dark:bg-[#1a1400]/70 border-2 border-gray-200 dark:border-yellow-400/20 text-gray-600 dark:text-yellow-200"
-                  />
-                  <Button
-                    onClick={handleReduceMaxSupply}
-                    disabled={!newMaxSupply || isReducingMaxSupply || isSigning}
-                    className="w-full h-12 text-lg bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl"
-                  >
-                    {isReducingMaxSupply || isSigning ? (
-                      <ButtonLoadingState text={isSigning ? "Waiting for signature..." : "Processing..."} />
-                    ) : (
-                      "Update Max Supply"
-                    )}
-                  </Button>
+              {/* Left Column - Token Stats */}
+              <div className="space-y-6">
+                <div className="group relative rounded-2xl p-6 shadow-2xl bg-white/60 dark:bg-[#1a1400]/70 border border-white/30 dark:border-yellow-400/20 backdrop-blur-lg transition-all duration-300 hover:scale-105 hover:shadow-[0_8px_32px_0_rgba(90,180,255,0.25)] dark:hover:shadow-[0_8px_32px_0_rgba(255,217,0,0.25)] hover:border-blue-400 dark:hover:border-yellow-400">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <Coins className="h-5 w-5 text-green-500 dark:text-[#FFD600]" />
+                      <h3 className="text-lg font-semibold text-blue-400 dark:text-yellow-200">Max Suppy</h3>
+                    </div>
+                    <p className="text-lg font-bold text-blue-400 dark:text-yellow-200">{tokenDetails.maxSupply} {tokenDetails.tokenSymbol}</p>
+                  </div>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button className="w-full h-8 text-sm bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl">
+                        Reduce Max Supply
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[425px] bg-white dark:bg-[#1a1400]/70 border border-white/30 dark:border-yellow-400/20 backdrop-blur-lg rounded-2xl shadow-2xl transition-all duration-300 hover:scale-105 hover:shadow-[0_8px_32px_0_rgba(90,180,255,0.25)] dark:hover:shadow-[0_8px_32px_0_rgba(255,217,0,0.25)] hover:border-blue-400 dark:hover:border-yellow-400 before:absolute before:inset-0 before:rounded-2xl before:bg-gradient-to-br before:from-blue-200/30 before:to-transparent dark:before:from-yellow-400/20 dark:before:to-transparent before:opacity-0 group-hover:before:opacity-100 before:transition-opacity before:duration-300">
+                      <DialogHeader>
+                        <DialogTitle className="text-xl font-bold text-blue-400 dark:text-yellow-200">Reduce Max Supply</DialogTitle>
+                        <p className="text-sm text-gray-600 dark:text-yellow-200 mt-2">
+                          Current max supply: {tokenDetails.maxSupply} {tokenDetails.tokenSymbol}
+                        </p>
+                      </DialogHeader>
+                      <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                          <Input
+                            id="newMaxSupply"
+                            type="number"
+                            placeholder="Enter new max supply"
+                            value={newMaxSupply}
+                            onChange={(e) => setNewMaxSupply(e.target.value)}
+                            className="h-10"
+                          />
+                          <p className="text-xs text-gray-500 dark:text-yellow-200/70">
+                            Must be less than current max supply
+                          </p>
+                        </div>
+                        <Button
+                          onClick={handleReduceMaxSupply}
+                          disabled={!newMaxSupply || isReducingMaxSupply || isSigning}
+                          className="w-full h-10 bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl"
+                        >
+                          {isReducingMaxSupply || isSigning ? (
+                            <ButtonLoadingState text={isSigning ? "Waiting for signature..." : "Processing..."} />
+                          ) : (
+                            "Update Max Supply"
+                          )}
+                        </Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="newThresholdSupply" className="text-lg font-bold text-gray-600 dark:text-yellow-200">New Threshold Supply</Label>
-                  <Input
-                    id="newThresholdSupply"
-                    type="number"
-                    placeholder="Enter new threshold supply"
-                    value={newThresholdSupply}
-                    onChange={(e) => setNewThresholdSupply(e.target.value)}
-                    className="h-12 text-lg bg-white/60 dark:bg-[#1a1400]/70 border-2 border-gray-200 dark:border-yellow-400/20 text-gray-600 dark:text-yellow-200"
-                  />
-                  <Button
-                    onClick={handleReduceThresholdSupply}
-                    disabled={!newThresholdSupply || isReducingThresholdSupply || isSigning}
-                    className="w-full h-12 text-lg bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl"
-                  >
-                    {isReducingThresholdSupply || isSigning ? (
-                      <ButtonLoadingState text={isSigning ? "Waiting for signature..." : "Processing..."} />
+                <div className="group relative rounded-2xl p-6 shadow-2xl bg-white/60 dark:bg-[#1a1400]/70 border border-white/30 dark:border-yellow-400/20 backdrop-blur-lg transition-all duration-300 hover:scale-105 hover:shadow-[0_8px_32px_0_rgba(90,180,255,0.25)] dark:hover:shadow-[0_8px_32px_0_rgba(255,217,0,0.25)] hover:border-blue-400 dark:hover:border-yellow-400">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <Target className="h-5 w-5 text-blue-400 dark:text-[#FFD600]" />
+                      <h3 className="text-lg font-semibold text-blue-400 dark:text-yellow-200">Threshold Supply</h3>
+                    </div>
+                    <p className="text-lg font-bold text-blue-400 dark:text-yellow-200">{tokenDetails.thresholdSupply} {tokenDetails.tokenSymbol}</p>
+                  </div>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button className="w-full h-8 text-sm bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl">
+                        Reduce Threshold
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[425px] bg-white dark:bg-[#1a1400]/70 border border-white/30 dark:border-yellow-400/20 backdrop-blur-lg rounded-2xl shadow-2xl transition-all duration-300 hover:scale-105 hover:shadow-[0_8px_32px_0_rgba(90,180,255,0.25)] dark:hover:shadow-[0_8px_32px_0_rgba(255,217,0,0.25)] hover:border-blue-400 dark:hover:border-yellow-400 before:absolute before:inset-0 before:rounded-2xl before:bg-gradient-to-br before:from-blue-200/30 before:to-transparent dark:before:from-yellow-400/20 dark:before:to-transparent before:opacity-0 group-hover:before:opacity-100 before:transition-opacity before:duration-300">
+                      <DialogHeader>
+                        <DialogTitle className="text-xl font-bold text-blue-400 dark:text-yellow-200">Reduce Threshold Supply</DialogTitle>
+                        <p className="text-sm text-gray-600 dark:text-yellow-200 mt-2">
+                          Current threshold: {tokenDetails.thresholdSupply} {tokenDetails.tokenSymbol}
+                        </p>
+                      </DialogHeader>
+                      <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                          <Input
+                            id="newThresholdSupply"
+                            type="number"
+                            placeholder="Enter new threshold supply"
+                            value={newThresholdSupply}
+                            onChange={(e) => setNewThresholdSupply(e.target.value)}
+                            className="h-10"
+                          />
+                          <p className="text-xs text-gray-500 dark:text-yellow-200/70">
+                            Must be less than current threshold supply
+                          </p>
+                        </div>
+                        <Button
+                          onClick={handleReduceThresholdSupply}
+                          disabled={!newThresholdSupply || isReducingThresholdSupply || isSigning}
+                          className="w-full h-10 bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl"
+                        >
+                          {isReducingThresholdSupply || isSigning ? (
+                            <ButtonLoadingState text={isSigning ? "Waiting for signature..." : "Processing..."} />
+                          ) : (
+                            "Update Threshold Supply"
+                          )}
+                        </Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+
+                <div className="group relative rounded-2xl p-6 shadow-2xl bg-white/60 dark:bg-[#1a1400]/70 border border-white/30 dark:border-yellow-400/20 backdrop-blur-lg transition-all duration-300 hover:scale-105 hover:shadow-[0_8px_32px_0_rgba(90,180,255,0.25)] dark:hover:shadow-[0_8px_32px_0_rgba(255,217,0,0.25)] hover:border-blue-400 dark:hover:border-yellow-400">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <ArrowUp className="h-5 w-5 text-purple-500 dark:text-[#FFD600]" />
+                      <h3 className="text-lg font-semibold text-blue-400 dark:text-yellow-200">Expansion Rate</h3>
+                    </div>
+                    <p className="text-lg font-bold text-blue-400 dark:text-yellow-200">{tokenDetails.maxExpansionRate} %</p>
+                  </div>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button className="w-full h-8 text-sm bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl">
+                        Reduce Rate
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[425px] bg-white dark:bg-[#1a1400]/70 border border-white/30 dark:border-yellow-400/20 backdrop-blur-lg rounded-2xl shadow-2xl transition-all duration-300 hover:scale-105 hover:shadow-[0_8px_32px_0_rgba(90,180,255,0.25)] dark:hover:shadow-[0_8px_32px_0_rgba(255,217,0,0.25)] hover:border-blue-400 dark:hover:border-yellow-400 before:absolute before:inset-0 before:rounded-2xl before:bg-gradient-to-br before:from-blue-200/30 before:to-transparent dark:before:from-yellow-400/20 dark:before:to-transparent before:opacity-0 group-hover:before:opacity-100 before:transition-opacity before:duration-300">
+                      <DialogHeader>
+                        <DialogTitle className="text-xl font-bold text-blue-400 dark:text-yellow-200">Reduce Max Expansion Rate</DialogTitle>
+                        <p className="text-sm text-gray-600 dark:text-yellow-200 mt-2">
+                          Current rate: {tokenDetails.maxExpansionRate}%
+                        </p>
+                      </DialogHeader>
+                      <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                          <Input
+                            id="newMaxExpansionRate"
+                            type="number"
+                            placeholder="Enter new max expansion rate"
+                            value={newMaxExpansionRate}
+                            onChange={(e) => setNewMaxExpansionRate(e.target.value)}
+                            className="h-10"
+                          />
+                          <p className="text-xs text-gray-500 dark:text-yellow-200/70">
+                            Must be less than current expansion rate
+                          </p>
+                        </div>
+                        <Button
+                          onClick={handleReduceMaxExpansionRate}
+                          disabled={!newMaxExpansionRate || isReducingMaxExpansionRate || isSigning}
+                          className="w-full h-10 bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl"
+                        >
+                          {isReducingMaxExpansionRate || isSigning ? (
+                            <ButtonLoadingState text={isSigning ? "Waiting for signature..." : "Processing..."} />
+                          ) : (
+                            "Update Max Expansion Rate"
+                          )}
+                        </Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+
+                <div className="group relative rounded-2xl p-6 shadow-2xl bg-white/60 dark:bg-[#1a1400]/70 border border-white/30 dark:border-yellow-400/20 backdrop-blur-lg transition-all duration-300 hover:scale-105 hover:shadow-[0_8px_32px_0_rgba(90,180,255,0.25)] dark:hover:shadow-[0_8px_32px_0_rgba(255,217,0,0.25)] hover:border-blue-400 dark:hover:border-yellow-400">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Info className="h-5 w-5 text-gray-500 dark:text-[#FFD600]" />
+                    <h3 className="text-lg font-semibold text-blue-400 dark:text-yellow-200">Transferability</h3>
+                  </div>
+                  <div className="space-y-2">
+                    {transferRestricted ? (
+                      <>
+                        <p className="text-sm text-gray-600 dark:text-yellow-200">
+                          Only transfers to address that already hold {tokenDetails.tokenSymbol} are currently enabled.
+                        </p>
+                        <Button
+                          onClick={handleDisableTransferRestriction}
+                          disabled={isDisablingTransferRestriction || isSigning}
+                          className="w-full h-10 text-sm bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl"
+                        >
+                          {isDisablingTransferRestriction || isSigning ? (
+                            <ButtonLoadingState text={isSigning ? "Waiting for signature..." : "Processing..."} />
+                          ) : (
+                            <div className="flex items-center gap-2">
+                              <Unlock className="h-4 w-4" />
+                              Enable Transfers to Any Address
+                            </div>
+                          )}
+                        </Button>
+                      </>
                     ) : (
-                      "Update Threshold Supply"
+                      <p className="text-sm text-gray-600 dark:text-yellow-200">
+                        Transfers to any address are already enabled
+                      </p>
                     )}
-                  </Button>
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="newMaxExpansionRate" className="text-lg font-bold text-gray-600 dark:text-yellow-200">New Max Expansion Rate (%)</Label>
-                  <Input
-                    id="newMaxExpansionRate"
-                    type="number"
-                    placeholder="Enter new max expansion rate"
-                    value={newMaxExpansionRate}
-                    onChange={(e) => setNewMaxExpansionRate(e.target.value)}
-                    className="h-12 text-lg bg-white/60 dark:bg-[#1a1400]/70 border-2 border-gray-200 dark:border-yellow-400/20 text-gray-600 dark:text-yellow-200"
-                  />
-                  <Button
-                    onClick={handleReduceMaxExpansionRate}
-                    disabled={!newMaxExpansionRate || isReducingMaxExpansionRate || isSigning}
-                    className="w-full h-12 text-lg bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl"
-                  >
-                    {isReducingMaxExpansionRate || isSigning ? (
-                      <ButtonLoadingState text={isSigning ? "Waiting for signature..." : "Processing..."} />
-                    ) : (
-                      "Update Max Expansion Rate"
-                    )}
-                  </Button>
-                </div>
-
-                {transferRestricted ? (
-                  <div className="space-y-2">
-                    <Label className="text-lg font-bold text-gray-600 dark:text-yellow-200">Transfer Restriction</Label>
+              {/* Right Column - Minting and Transfer Restriction */}
+              <div className="space-y-6">
+                <div className="group relative rounded-2xl p-6 shadow-2xl bg-white/60 dark:bg-[#1a1400]/70 border border-white/30 dark:border-yellow-400/20 backdrop-blur-lg transition-all duration-300 hover:scale-105 hover:shadow-[0_8px_32px_0_rgba(90,180,255,0.25)] dark:hover:shadow-[0_8px_32px_0_rgba(255,217,0,0.25)] hover:border-blue-400 dark:hover:border-yellow-400">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Coins className="h-5 w-5 text-green-500 dark:text-[#FFD600]" />
+                    <h3 className="text-lg font-semibold text-blue-400 dark:text-yellow-200">Mint Tokens</h3>
+                  </div>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <p className="text-sm text-gray-600 dark:text-yellow-200">Max Mintable Amount: <span className="font-bold">{tokenDetails.maxMintableAmount} {tokenDetails.tokenSymbol}</span></p>
+                      <p className="text-sm text-gray-600 dark:text-yellow-200">Current Supply: <span className="font-bold">{tokenDetails.currentSupply} {tokenDetails.tokenSymbol}</span></p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="mintAmount" className="text-sm font-bold text-gray-600 dark:text-yellow-200">Amount to Mint</Label>
+                      <Input
+                        id="mintAmount"
+                        type="number"
+                        placeholder="Enter amount"
+                        value={mintAmount}
+                        onChange={(e) => setMintAmount(e.target.value)}
+                        className="h-10 text-sm bg-white/60 dark:bg-[#2a1a00] border-2 border-gray-200 dark:border-yellow-400/20 text-gray-600 dark:text-yellow-200"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="mintTo" className="text-sm font-bold text-gray-600 dark:text-yellow-200">Mint To Address</Label>
+                      <Input
+                        id="mintTo"
+                        type="text"
+                        placeholder="Enter recipient address"
+                        value={mintToAddress}
+                        onChange={(e) => setMintToAddress(e.target.value)}
+                        className="h-10 text-sm bg-white/60 dark:bg-[#2a1a00] border-2 border-gray-200 dark:border-yellow-400/20 text-gray-600 dark:text-yellow-200"
+                      />
+                    </div>
+                  </div>
+                  <div className="mt-6">
                     <Button
-                      onClick={handleDisableTransferRestriction}
-                      disabled={isDisablingTransferRestriction || isSigning}
-                      className="w-full h-12 text-lg bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl"
+                      onClick={handleMint}
+                      disabled={!mintAmount || !mintToAddress || isMinting || isSigning}
+                      className="w-full h-10 text-sm bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl"
                     >
-                      {isDisablingTransferRestriction || isSigning ? (
+                      {isMinting || isSigning ? (
                         <ButtonLoadingState text={isSigning ? "Waiting for signature..." : "Processing..."} />
                       ) : (
-                        <div className="flex items-center gap-2">
-                          <Unlock className="h-5 w-5" />
-                          Disable Transfer Restriction
-                        </div>
+                        "Mint Tokens"
                       )}
                     </Button>
                   </div>
-                ) : (
-                  <div className="space-y-2">
-                    <Label className="text-lg font-bold text-gray-600 dark:text-yellow-200">Transfer Restriction</Label>
-                    <p className="text-lg text-gray-600 dark:text-yellow-200">Transfer restriction is already disabled</p>
+                </div>
+
+                <div className="group relative rounded-2xl p-6 shadow-2xl bg-white/60 dark:bg-[#1a1400]/70 border border-white/30 dark:border-yellow-400/20 backdrop-blur-lg transition-all duration-300 hover:scale-105 hover:shadow-[0_8px_32px_0_rgba(90,180,255,0.25)] dark:hover:shadow-[0_8px_32px_0_rgba(255,217,0,0.25)] hover:border-blue-400 dark:hover:border-yellow-400">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Settings className="h-5 w-5 text-gray-500 dark:text-[#FFD600]" />
+                    <h3 className="text-lg font-semibold text-blue-400 dark:text-yellow-200">Minter Role Management</h3>
                   </div>
-                )}
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="minterAddress" className="text-sm font-bold text-gray-600 dark:text-yellow-200">Minter Address</Label>
+                      <Input
+                        id="minterAddress"
+                        type="text"
+                        placeholder="Enter minter address"
+                        value={minterAddress}
+                        onChange={(e) => setMinterAddress(e.target.value)}
+                        className="h-10 text-sm bg-white/60 dark:bg-[#2a1a00] border-2 border-gray-200 dark:border-yellow-400/20 text-gray-600 dark:text-yellow-200"
+                      />
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={handleGrantMinterRole}
+                        disabled={!minterAddress || isGrantingMinterRole || isSigning}
+                        className="flex-1 h-10 text-sm bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl"
+                      >
+                        Grant Minter Role
+                      </Button>
+                      <Button
+                        onClick={handleRevokeMinterRole}
+                        disabled={!minterAddress || isRevokingMinterRole || isSigning}
+                        className="flex-1 h-10 text-sm bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl"
+                      >
+                        Revoke Minter Role
+                      </Button>
+                    </div>
+                  </div>
+                </div>
               </div>
+            </div>
+
+            {/* Contract Address at the bottom */}
+            <div className="mt-8 flex items-center justify-center gap-2">
+              <a
+                href={`https://explorer.blockscout.com/address/${tokenDetails.transactionHash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm font-mono text-gray-600 dark:text-yellow-100 hover:text-blue-500 dark:hover:text-yellow-400 transition-colors"
+              >
+                {tokenDetails.transactionHash}
+              </a>
+              <Button
+                onClick={handleCopyAddress}
+                variant="default"
+                size="icon"
+                className="h-8 w-8"
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
             </div>
           </CardContent>
         </Card>
