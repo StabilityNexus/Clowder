@@ -530,7 +530,7 @@ export default function InteractionClient() {
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
                       <Coins className="h-5 w-5 text-green-500 dark:text-[#FFD600]" />
-                      <h3 className="text-lg font-semibold text-blue-400 dark:text-yellow-200">Max Suppy</h3>
+                      <h3 className="text-lg font-semibold text-blue-400 dark:text-yellow-200">Max Supply</h3>
                     </div>
                     <p className="text-lg font-bold text-blue-400 dark:text-yellow-200">{tokenDetails.maxSupply} {tokenDetails.tokenSymbol}</p>
                   </div>
