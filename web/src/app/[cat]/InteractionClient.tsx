@@ -10,7 +10,7 @@ import { CONTRIBUTION_ACCOUNTING_TOKEN_ABI } from "@/contractsABI/ContributionAc
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { parseEther } from "viem";
 import { showTransactionToast } from "@/components/ui/transaction-toast";
 import { motion } from "framer-motion";
@@ -18,6 +18,7 @@ import { LoadingState } from "@/components/ui/loading-state";
 import { ButtonLoadingState } from "@/components/ui/button-loading-state";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { catExplorer } from "@/utils/catExplorer";
 
 // Define supported chain IDs
 type SupportedChainId = 1 | 137 | 534351 | 5115 | 61 | 2001;
@@ -30,6 +31,7 @@ interface TokenDetailsState {
   maxExpansionRate: number;
   currentSupply: number;
   transactionHash: string;
+  tokenAddress: string;
   timestamp: string;
   lastMintTimestamp: number;
   maxMintableAmount: number;
@@ -57,6 +59,7 @@ export default function InteractionClient() {
     maxExpansionRate: 0,
     currentSupply: 0,
     transactionHash: "",
+    tokenAddress: "",
     timestamp: "",
     lastMintTimestamp: 0,
     maxMintableAmount: 0,
@@ -184,6 +187,7 @@ export default function InteractionClient() {
         maxExpansionRate: Number(expansionRate) / 100,
         currentSupply: Number(currentSupply) / 10 ** 18,
         transactionHash: tokenAddress,
+        tokenAddress: tokenAddress,
         timestamp: new Date().toISOString(),
         lastMintTimestamp: Number(lastMint),
         maxMintableAmount: Number(maxMintable) / 10 ** 18,
@@ -207,6 +211,11 @@ export default function InteractionClient() {
   useEffect(() => {
     if (tokenAddress && chainId) {
       getTokenDetails();
+      // Set the token address in the details
+      setTokenDetails(prev => ({
+        ...prev,
+        tokenAddress: tokenAddress
+      }));
     }
   }, [tokenAddress, chainId, getTokenDetails]);
 
@@ -405,6 +414,11 @@ export default function InteractionClient() {
   };
 
   const handleGrantMinterRole = async () => {
+    const confirmed = window.confirm(
+      `Are you sure you want to grant minter role to ${minterAddress}?`
+    );
+    if (!confirmed) return;
+
     try {
       setIsSigning(true);
       await grantMinterRole({
@@ -427,6 +441,11 @@ export default function InteractionClient() {
   };
 
   const handleRevokeMinterRole = async () => {
+    const confirmed = window.confirm(
+      `Are you sure you want to revoke minter role from ${minterAddress}?`
+    );
+    if (!confirmed) return;
+
     try {
       setIsSigning(true);
       await revokeMinterRole({
@@ -471,7 +490,7 @@ export default function InteractionClient() {
   }, [revokeMinterRoleData, chainId]);
 
   const handleCopyAddress = () => {
-    navigator.clipboard.writeText(tokenDetails.transactionHash);
+    navigator.clipboard.writeText(tokenAddress);
     toast.success("Address copied to clipboard!");
   };
 
@@ -805,12 +824,12 @@ export default function InteractionClient() {
             {/* Contract Address at the bottom */}
             <div className="mt-8 flex items-center justify-center gap-2">
               <a
-                href={`https://explorer.blockscout.com/address/${tokenDetails.transactionHash}`}
+                href={catExplorer(tokenAddress as `0x${string}`, chainId!)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sm font-mono text-gray-600 dark:text-yellow-100 hover:text-blue-500 dark:hover:text-yellow-400 transition-colors"
+                className="text-lg font-mono text-gray-600 dark:text-yellow-100 hover:text-blue-500 dark:hover:text-yellow-400 transition-colors"
               >
-                {tokenDetails.transactionHash}
+                {tokenAddress}
               </a>
               <Button
                 onClick={handleCopyAddress}
