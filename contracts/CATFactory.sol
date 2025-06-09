@@ -74,10 +74,10 @@ contract CATFactory is Ownable {
         require(start < creatorTokens.length, "Start index out of bounds");
         
         if (end >= creatorTokens.length) {
-            end = creatorTokens.length - 1;
+            end = creatorTokens.length;
         }
         
-        uint256 resultLength = end - start + 1;
+        uint256 resultLength = end - start;
         address[] memory result = new address[](resultLength);
         
         for (uint256 i = 0; i < resultLength; i++) {
