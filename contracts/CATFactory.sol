@@ -34,6 +34,7 @@ contract CATFactory is Ownable {
     ) public returns (address) {
         ContributionAccountingToken newCAT = new ContributionAccountingToken(
             msg.sender,
+            address(this),
             maxSupply,
             thresholdSupply,
             maxExpansionRate,
@@ -44,19 +45,20 @@ contract CATFactory is Ownable {
         address catAddress = address(newCAT);
         administerableTokens[msg.sender].push(catAddress);
         emit CATCreated(msg.sender, catAddress, _nextTokenId);
-        _nextTokenId++; // Increment tokenId for the next contract
+        _nextTokenId++;
 
         return catAddress;
     }
 
     /**
      * @dev Grants minter role to an address in the CAT contract.
-     * @param catAddress The address of the CAT contract.
+     * This function is called by CAT contracts when their admins want to grant minter roles.
+     * @param catAddress The address of the CAT contract calling this function.
      * @param minter The address to grant the minter role.
      */
-    function grantMinterRole(address catAddress, address minter) public onlyOwner {
-        ContributionAccountingToken(catAddress).grantMinterRole(minter);
-        mintableTokens[minter].push(catAddress); // Update mintable tokens mapping
+    function grantMinterRole(address catAddress, address minter) external {
+        mintableTokens[minter].push(catAddress);        
+        ContributionAccountingToken(catAddress)._grantMinterRoleFromFactory(minter);          // Call back to the CAT contract to actually grant the role
     }
 
     /**
@@ -71,7 +73,7 @@ contract CATFactory is Ownable {
         address[] memory creatorTokens = administerableTokens[_creator];
         
         require(start <= end, "Start index must be less than or equal to end index");
-        require(start < creatorTokens.length, "Start index out of bounds");
+        require(start <= creatorTokens.length, "Start index out of bounds");
         
         if (end >= creatorTokens.length) {
             end = creatorTokens.length;
