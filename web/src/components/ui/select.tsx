@@ -17,8 +17,6 @@ interface SelectTriggerProps {
 interface SelectContentProps {
   children: React.ReactNode;
   className?: string;
-  position?: string;
-  sideOffset?: number;
 }
 
 interface SelectItemProps {
@@ -104,7 +102,7 @@ export const SelectTrigger = ({ children, className }: SelectTriggerProps) => {
   );
 };
 
-export const SelectContent = ({ children, className, position, sideOffset }: SelectContentProps) => {
+export const SelectContent = ({ children, className}: SelectContentProps) => {
   const { isOpen } = useSelectContext();
 
   if (!isOpen) return null;

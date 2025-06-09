@@ -28,7 +28,7 @@ const services = [
 
 const supportedChains = [
   { id: "534351", name: "Scroll Sepolia" },
-  { id: "5115", name: "Citrea" },
+  { id: "5115", name: "Citrea Testnet" },
   { id: "61", name: "Ethereum Classic" },
   { id: "8453", name: "Base Mainnet" },
   { id: "137", name: "Polygon Mainnet" },
@@ -394,8 +394,6 @@ export default function Home() {
                       </SelectTrigger>
                       <SelectContent 
                         className="bg-white/95 dark:bg-[#1a1400]/95 border-2 border-blue-200 dark:border-yellow-400/30 rounded-xl z-[103] max-h-[200px] overflow-y-auto"
-                        position="popper"
-                        sideOffset={4}
                       >
                         {supportedChains.map((chain) => (
                           <SelectItem 
