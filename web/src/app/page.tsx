@@ -17,8 +17,7 @@ import { useTheme } from "next-themes"
 import { faGithub, faDiscord, faTelegram, faXTwitter} from "@fortawesome/free-brands-svg-icons"
 import { useAccount } from "wagmi"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { motion } from "framer-motion"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { motion, AnimatePresence } from "framer-motion"
 import { showTransactionToast } from "@/components/ui/transaction-toast"
 
 const services = [
@@ -51,6 +50,23 @@ export default function Home() {
   const { address } = useAccount()
   const [selectedChain, setSelectedChain] = useState("")
 
+  useEffect(() => {
+    if (resolvedTheme) {
+      setIsThemeReady(true)
+    }
+  }, [resolvedTheme])
+
+  useEffect(() => {
+    if (showPopup) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [showPopup]);
+
   const handleUseCAT = () => {
     if (catAddress.trim() && selectedChain) {
       try {
@@ -77,12 +93,6 @@ export default function Home() {
       }
     }
   }
-
-  useEffect(() => {
-    if (resolvedTheme) {
-      setIsThemeReady(true)
-    }
-  }, [resolvedTheme])
 
   if (!isThemeReady) return null
 
@@ -320,71 +330,107 @@ export default function Home() {
         </motion.section>
       </div>
 
-      {/* Use CAT Dialog */}
-      <Dialog open={showPopup} onOpenChange={setShowPopup}>
-        <DialogContent className="sm:max-w-[600px] bg-white/70 dark:bg-[#1a1400]/80 border border-white/30 dark:border-yellow-400/20 backdrop-blur-lg rounded-2xl overflow-hidden">
-          <DialogHeader>
-            <DialogTitle className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-blue-200 dark:from-[#FFD600] dark:to-white">
-              Use Existing CAT
-            </DialogTitle>
-            <DialogDescription className="text-gray-600 dark:text-yellow-100">
-              Enter the CAT address and select the network to interact with your token.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-6 py-6">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <label htmlFor="catAddress" className="text-sm font-medium text-blue-600 dark:text-yellow-200">
-                  CAT Address
-                </label>
-                <Input
-                  id="catAddress"
-                  value={catAddress}
-                  onChange={(e) => setCatAddress(e.target.value)}
-                  placeholder="0x..."
-                  className="w-full h-12 text-lg font-mono bg-white/60 dark:bg-[#2a1a00] border-2 border-blue-200 dark:border-yellow-400/20 text-gray-800 dark:text-yellow-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-yellow-400 rounded-xl"
-                />
-              </div>
-              <div className="space-y-2">
-                <label htmlFor="network" className="text-sm font-medium text-blue-600 dark:text-yellow-200">
-                  Network
-                </label>
-                <Select value={selectedChain} onValueChange={setSelectedChain}>
-                  <SelectTrigger className="w-full h-12 text-lg text-gray-800 dark:text-yellow-100 bg-white/60 dark:bg-[#2a1a00] border-2 border-blue-200 dark:border-yellow-400/20 rounded-xl">
-                    <SelectValue placeholder="Select network" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white/90 dark:bg-[#1a1400] border-2 border-blue-200 dark:border-yellow-400/20 rounded-xl">
-                    {supportedChains.map((chain) => (
-                      <SelectItem 
-                        key={chain.id} 
-                        value={chain.id}
-                        className="text-gray-800 dark:text-yellow-100 hover:bg-blue-50 dark:hover:bg-yellow-400/10 rounded-lg"
-                      >
-                        {chain.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-          <div className="flex justify-end space-x-4">
-            <Button
+      {/* Use CAT Modal */}
+      <AnimatePresence>
+        {showPopup && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
               onClick={() => setShowPopup(false)}
-              className="h-12 px-6 text-lg border-2 border-blue-200 dark:border-yellow-400/20 bg-transparent hover:bg-blue-50 dark:hover:bg-yellow-400/10 text-gray-700 dark:text-yellow-200 rounded-xl"
+            />
+            
+            {/* Modal Content */}
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="relative z-[101] w-full max-w-[600px] mx-4 bg-white/90 dark:bg-[#1a1400]/95 border-2 border-blue-200 dark:border-yellow-400/30 backdrop-blur-lg rounded-2xl shadow-2xl max-h-[90vh] overflow-visible"
+              onClick={(e) => e.stopPropagation()}
             >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleUseCAT}
-              disabled={!catAddress.trim() || !selectedChain}
-              className="h-12 px-6 text-lg bg-gradient-to-r from-blue-600 to-blue-400 dark:from-[#FFD600] dark:to-[#BA9901] hover:from-blue-700 hover:to-blue-500 dark:hover:from-yellow-400 dark:hover:to-yellow-200 text-white dark:text-black rounded-xl shadow-lg transition-all duration-300"
-            >
-              Continue
-            </Button>
+              <div className="p-6">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-blue-200 dark:from-[#FFD600] dark:to-white">
+                      Use Existing CAT
+                    </h2>
+                    <p className="text-gray-600 dark:text-yellow-100 mt-1">
+                      Enter the CAT address and select the network to interact with your token.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowPopup(false)}
+                    className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <label htmlFor="catAddress" className="text-sm font-medium text-blue-600 dark:text-yellow-200">
+                      CAT Address
+                    </label>
+                    <Input
+                      id="catAddress"
+                      value={catAddress}
+                      onChange={(e) => setCatAddress(e.target.value)}
+                      placeholder="0x..."
+                      className="w-full h-12 text-lg font-mono bg-white/80 dark:bg-[#2a1a00]/90 border-2 border-blue-200 dark:border-yellow-400/30 text-gray-800 dark:text-yellow-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-yellow-400 rounded-xl"
+                    />
+                  </div>
+                  <div className="space-y-2 relative z-[102]">
+                    <label className="text-sm font-medium text-blue-600 dark:text-yellow-200">
+                      Network
+                    </label>
+                    <Select value={selectedChain} onValueChange={setSelectedChain}>
+                      <SelectTrigger className="w-full h-12 text-lg text-gray-800 dark:text-yellow-100 bg-white/80 dark:bg-[#2a1a00]/90 border-2 border-blue-200 dark:border-yellow-400/30 rounded-xl">
+                        <SelectValue placeholder="Select network" />
+                      </SelectTrigger>
+                      <SelectContent 
+                        className="bg-white/95 dark:bg-[#1a1400]/95 border-2 border-blue-200 dark:border-yellow-400/30 rounded-xl z-[103] max-h-[200px] overflow-y-auto"
+                        position="popper"
+                        sideOffset={4}
+                      >
+                        {supportedChains.map((chain) => (
+                          <SelectItem 
+                            key={chain.id} 
+                            value={chain.id}
+                            className="text-gray-800 dark:text-yellow-100 hover:bg-blue-50 dark:hover:bg-yellow-400/10 rounded-lg py-3 px-4 text-base cursor-pointer"
+                          >
+                            {chain.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="flex justify-end space-x-4 mt-6">
+                  <Button
+                    onClick={() => setShowPopup(false)}
+                    className="h-12 px-6 text-lg border-2 border-blue-200 dark:border-yellow-400/30 bg-transparent hover:bg-blue-50 dark:hover:bg-yellow-400/10 text-gray-700 dark:text-yellow-200 rounded-xl"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleUseCAT}
+                    disabled={!catAddress.trim() || !selectedChain}
+                    className="h-12 px-6 text-lg bg-gradient-to-r from-blue-600 to-blue-400 dark:from-[#FFD600] dark:to-[#BA9901] hover:from-blue-700 hover:to-blue-500 dark:hover:from-yellow-400 dark:hover:to-yellow-200 text-white dark:text-black rounded-xl shadow-lg transition-all duration-300"
+                  >
+                    Continue
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
           </div>
-        </DialogContent>
-      </Dialog>
+        )}
+      </AnimatePresence>
     </Layout>
   )
 }
