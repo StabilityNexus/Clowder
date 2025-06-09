@@ -719,7 +719,7 @@ export default function InteractionClient() {
                         This token is deployed on <span className="font-semibold">{CHAIN_NAMES[chainId!]}</span> (Chain ID: {chainId})
                       </p>
                       <p className="text-sm text-red-600 dark:text-red-300">
-                        You're currently connected to Chain ID: <span className="font-semibold">{currentChainId}</span>
+                        You are currently connected to Chain ID: <span className="font-semibold">{currentChainId}</span>
                       </p>
                       <p className="text-sm text-red-600 dark:text-red-300 mt-2">
                         Please switch to the correct network to interact with this token.
