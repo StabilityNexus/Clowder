@@ -102,7 +102,7 @@ export const SelectTrigger = ({ children, className }: SelectTriggerProps) => {
   );
 };
 
-export const SelectContent = ({ children, className }: SelectContentProps) => {
+export const SelectContent = ({ children, className}: SelectContentProps) => {
   const { isOpen } = useSelectContext();
 
   if (!isOpen) return null;
@@ -110,12 +110,14 @@ export const SelectContent = ({ children, className }: SelectContentProps) => {
   return (
     <div
       className={cn(
-        "absolute z-50 min-w-[8rem] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95",
+        "absolute z-[200] min-w-[8rem] rounded-md border bg-popover text-popover-foreground shadow-md animate-in fade-in-0 zoom-in-95",
         "w-full mt-2",
         className
       )}
     >
-      <div className="p-1">{children}</div>
+      <div className="max-h-[300px] overflow-y-auto">
+        {children}
+      </div>
     </div>
   );
 };

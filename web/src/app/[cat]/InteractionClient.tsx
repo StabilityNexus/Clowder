@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
-import { Info, Coins, Settings, Unlock, Copy, ArrowUp, Target } from "lucide-react";
+import { Info, Coins, Settings, Unlock, Copy, ArrowUp, Target, AlertTriangle } from "lucide-react";
 import { Card,  CardContent } from "@/components/ui/card";
 import { getPublicClient } from "@wagmi/core";
 import { config } from "@/utils/config";
@@ -10,18 +10,26 @@ import { CONTRIBUTION_ACCOUNTING_TOKEN_ABI } from "@/contractsABI/ContributionAc
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { useWriteContract, useWaitForTransactionReceipt, useAccount, useChainId } from "wagmi";
 import { parseEther } from "viem";
 import { showTransactionToast } from "@/components/ui/transaction-toast";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { LoadingState } from "@/components/ui/loading-state";
 import { ButtonLoadingState } from "@/components/ui/button-loading-state";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import toast from "react-hot-toast";
 import { catExplorer } from "@/utils/catExplorer";
 
 // Define supported chain IDs
 type SupportedChainId = 137 | 534351 | 5115 | 61 | 8453;
+
+// Chain names mapping
+const CHAIN_NAMES: Record<SupportedChainId, string> = {
+  137: "Polygon",
+  534351: "Scroll Sepolia",
+  5115: "Citrea Testnet",
+  61: "Ethereum Classic",
+  8453: "Base"
+};
 
 interface TokenDetailsState {
   tokenName: string;
@@ -39,6 +47,9 @@ interface TokenDetailsState {
 
 export default function InteractionClient() {
   const searchParams = useSearchParams();
+  const { isConnected } = useAccount();
+  const currentChainId = useChainId();
+  
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [mintAmount, setMintAmount] = useState("");
@@ -81,9 +92,10 @@ export default function InteractionClient() {
   });
 
   // Add dialog open states
-  const [isMaxSupplyDialogOpen, setIsMaxSupplyDialogOpen] = useState(false);
-  const [isThresholdDialogOpen, setIsThresholdDialogOpen] = useState(false);
-  const [isExpansionRateDialogOpen, setIsExpansionRateDialogOpen] = useState(false);
+  const [activeModal, setActiveModal] = useState<'maxSupply' | 'threshold' | 'expansionRate' | null>(null);
+
+  // Check if user is on wrong chain
+  const isWrongChain = isConnected && chainId && currentChainId ? currentChainId !== chainId : false;
 
   // Type guard for chain ID validation
   const isValidChainId = useCallback((chainId: number): chainId is SupportedChainId => {
@@ -502,6 +514,12 @@ export default function InteractionClient() {
     toast.success("Address copied to clipboard!");
   };
 
+  // Update modal state handlers
+  const openMaxSupplyModal = () => setActiveModal('maxSupply');
+  const openThresholdModal = () => setActiveModal('threshold');
+  const openExpansionRateModal = () => setActiveModal('expansionRate');
+  const closeModal = () => setActiveModal(null);
+
   if (isLoading) {
     return (
       <LoadingState
@@ -522,6 +540,143 @@ export default function InteractionClient() {
 
   return (
     <div className="min-h-screen mx-auto">
+      {/* Combined Modal - moved outside main content for full screen coverage */}
+      <AnimatePresence>
+        {activeModal && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+              onClick={closeModal}
+            />
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="relative z-[201] w-full max-w-[425px] mx-4 bg-white/90 dark:bg-[#1a1400]/95 border-2 border-blue-200 dark:border-yellow-400/30 backdrop-blur-lg rounded-2xl shadow-2xl max-h-[90vh] overflow-visible"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-6">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h2 className="text-xl font-bold text-blue-400 dark:text-yellow-200">
+                      {activeModal === 'maxSupply' && 'Reduce Max Supply'}
+                      {activeModal === 'threshold' && 'Reduce Threshold Supply'}
+                      {activeModal === 'expansionRate' && 'Reduce Max Expansion Rate'}
+                    </h2>
+                    <p className="text-sm text-gray-600 dark:text-yellow-200 mt-2">
+                      {activeModal === 'maxSupply' && `Current max supply: ${tokenDetails.maxSupply} ${tokenDetails.tokenSymbol}`}
+                      {activeModal === 'threshold' && `Current threshold: ${tokenDetails.thresholdSupply} ${tokenDetails.tokenSymbol}`}
+                      {activeModal === 'expansionRate' && `Current rate: ${tokenDetails.maxExpansionRate}%`}
+                    </p>
+                  </div>
+                  <button
+                    onClick={closeModal}
+                    className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+                <div className="space-y-4 py-4 relative z-[202]">
+                  <div className="space-y-2">
+                    {activeModal === 'maxSupply' && (
+                      <>
+                        <Input
+                          id="newMaxSupply"
+                          type="number"
+                          placeholder="Enter new max supply"
+                          value={newMaxSupply}
+                          onChange={(e) => setNewMaxSupply(e.target.value)}
+                          className="h-10"
+                        />
+                        <p className="text-xs text-gray-500 dark:text-yellow-200/70">
+                          Must be less than current max supply
+                        </p>
+                        <Button
+                          onClick={() => {
+                            handleReduceMaxSupply();
+                            closeModal();
+                          }}
+                          disabled={!newMaxSupply || isReducingMaxSupply || isSigning}
+                          className="w-full h-10 bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl"
+                        >
+                          {isReducingMaxSupply || isSigning ? (
+                            <ButtonLoadingState text={isSigning ? "Waiting for signature..." : "Processing..."} />
+                          ) : (
+                            "Update Max Supply"
+                          )}
+                        </Button>
+                      </>
+                    )}
+                    {activeModal === 'threshold' && (
+                      <>
+                        <Input
+                          id="newThresholdSupply"
+                          type="number"
+                          placeholder="Enter new threshold supply"
+                          value={newThresholdSupply}
+                          onChange={(e) => setNewThresholdSupply(e.target.value)}
+                          className="h-10"
+                        />
+                        <p className="text-xs text-gray-500 dark:text-yellow-200/70">
+                          Must be less than current threshold supply
+                        </p>
+                        <Button
+                          onClick={() => {
+                            handleReduceThresholdSupply();
+                            closeModal();
+                          }}
+                          disabled={!newThresholdSupply || isReducingThresholdSupply || isSigning}
+                          className="w-full h-10 bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl"
+                        >
+                          {isReducingThresholdSupply || isSigning ? (
+                            <ButtonLoadingState text={isSigning ? "Waiting for signature..." : "Processing..."} />
+                          ) : (
+                            "Update Threshold Supply"
+                          )}
+                        </Button>
+                      </>
+                    )}
+                    {activeModal === 'expansionRate' && (
+                      <>
+                        <Input
+                          id="newMaxExpansionRate"
+                          type="number"
+                          placeholder="Enter new max expansion rate"
+                          value={newMaxExpansionRate}
+                          onChange={(e) => setNewMaxExpansionRate(e.target.value)}
+                          className="h-10"
+                        />
+                        <p className="text-xs text-gray-500 dark:text-yellow-200/70">
+                          Must be less than current expansion rate
+                        </p>
+                        <Button
+                          onClick={() => {
+                            handleReduceMaxExpansionRate();
+                            closeModal();
+                          }}
+                          disabled={!newMaxExpansionRate || isReducingMaxExpansionRate || isSigning}
+                          className="w-full h-10 bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl"
+                        >
+                          {isReducingMaxExpansionRate || isSigning ? (
+                            <ButtonLoadingState text={isSigning ? "Waiting for signature..." : "Processing..."} />
+                          ) : (
+                            "Update Max Expansion Rate"
+                          )}
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
       <div className="max-w-7xl mx-auto space-y-8 px-4 py-8">
         {/* Header Section */}
         <div className="text-center mb-8">
@@ -535,8 +690,50 @@ export default function InteractionClient() {
           </motion.h1>
         </div>
 
+        {/* Chain Warning Banner */}
+        {isWrongChain && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+            className="mb-6"
+          >
+            <Card className="border-2 border-red-500/50 bg-gradient-to-r from-red-50/90 to-red-100/90 dark:from-red-900/30 dark:to-red-800/30 backdrop-blur-sm shadow-lg hover:shadow-red-500/10 transition-all duration-300">
+              <CardContent className="p-6">
+                <div className="flex items-start gap-4">
+                  <div className="mt-1">
+                    <AlertTriangle className="h-6 w-6 text-red-500 dark:text-red-400 flex-shrink-0 animate-pulse" />
+                  </div>
+                  <div className="flex-1 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-red-600 to-red-500 dark:from-red-400 dark:to-red-300">
+                        Wrong Network Detected
+                      </h3>
+                      <span className="px-2 py-1 text-xs font-medium bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-300 rounded-full">
+                        Action Required
+                      </span>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm text-red-600 dark:text-red-300">
+                        This token is deployed on <span className="font-semibold">{CHAIN_NAMES[chainId!]}</span> (Chain ID: {chainId})
+                      </p>
+                      <p className="text-sm text-red-600 dark:text-red-300">
+                        You're currently connected to Chain ID: <span className="font-semibold">{currentChainId}</span>
+                      </p>
+                      <p className="text-sm text-red-600 dark:text-red-300 mt-2">
+                        Please switch to the correct network to interact with this token.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+
         {/* Combined Token Overview and Admin Functions Card */}
-        <Card className="group relative rounded-2xl p-8 shadow-2xl bg-white/60 dark:bg-[#1a1400]/70 border border-white/30 dark:border-yellow-400/20 backdrop-blur-lg transition-all duration-300 hover:scale-105 hover:shadow-[0_8px_32px_0_rgba(90,180,255,0.25)] dark:hover:shadow-[0_8px_32px_0_rgba(255,217,0,0.25)] hover:border-blue-400 dark:hover:border-yellow-400">
+        <Card className={`group relative rounded-2xl p-8 shadow-2xl bg-white/60 dark:bg-[#1a1400]/70 border border-white/30 dark:border-yellow-400/20 backdrop-blur-lg transition-all duration-300 hover:scale-105 hover:shadow-[0_8px_32px_0_rgba(90,180,255,0.25)] dark:hover:shadow-[0_8px_32px_0_rgba(255,217,0,0.25)] hover:border-blue-400 dark:hover:border-yellow-400 ${isWrongChain ? 'opacity-60 pointer-events-none' : ''}`}>
           
           <CardContent className="pt-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -550,50 +747,13 @@ export default function InteractionClient() {
                     </div>
                     <p className="text-lg font-bold text-blue-400 dark:text-yellow-200">{tokenDetails.maxSupply} {tokenDetails.tokenSymbol}</p>
                   </div>
-                  <Dialog open={isMaxSupplyDialogOpen} onOpenChange={setIsMaxSupplyDialogOpen}>
-                    <DialogTrigger asChild>
-                      <Button className="w-full h-8 text-sm bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl">
-                        Reduce Max Supply
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-[425px] bg-white dark:bg-[#1a1400]/70 border border-white/30 dark:border-yellow-400/20 backdrop-blur-lg rounded-2xl shadow-2xl">
-                      <DialogHeader>
-                        <DialogTitle className="text-xl font-bold text-blue-400 dark:text-yellow-200">Reduce Max Supply</DialogTitle>
-                        <p className="text-sm text-gray-600 dark:text-yellow-200 mt-2">
-                          Current max supply: {tokenDetails.maxSupply} {tokenDetails.tokenSymbol}
-                        </p>
-                      </DialogHeader>
-                      <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                          <Input
-                            id="newMaxSupply"
-                            type="number"
-                            placeholder="Enter new max supply"
-                            value={newMaxSupply}
-                            onChange={(e) => setNewMaxSupply(e.target.value)}
-                            className="h-10"
-                          />
-                          <p className="text-xs text-gray-500 dark:text-yellow-200/70">
-                            Must be less than current max supply
-                          </p>
-                        </div>
-                        <Button
-                          onClick={() => {
-                            handleReduceMaxSupply();
-                            setIsMaxSupplyDialogOpen(false);
-                          }}
-                          disabled={!newMaxSupply || isReducingMaxSupply || isSigning}
-                          className="w-full h-10 bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl"
-                        >
-                          {isReducingMaxSupply || isSigning ? (
-                            <ButtonLoadingState text={isSigning ? "Waiting for signature..." : "Processing..."} />
-                          ) : (
-                            "Update Max Supply"
-                          )}
-                        </Button>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
+                  <Button 
+                    onClick={openMaxSupplyModal}
+                    disabled={isWrongChain}
+                    className="w-full h-8 text-sm bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Reduce Max Supply
+                  </Button>
                 </div>
 
                 <div className="group relative rounded-2xl p-6 shadow-2xl bg-white/60 dark:bg-[#1a1400]/70 border border-white/30 dark:border-yellow-400/20 backdrop-blur-lg transition-all duration-300 hover:scale-105 hover:shadow-[0_8px_32px_0_rgba(90,180,255,0.25)] dark:hover:shadow-[0_8px_32px_0_rgba(255,217,0,0.25)] hover:border-blue-400 dark:hover:border-yellow-400">
@@ -604,50 +764,13 @@ export default function InteractionClient() {
                     </div>
                     <p className="text-lg font-bold text-blue-400 dark:text-yellow-200">{tokenDetails.thresholdSupply} {tokenDetails.tokenSymbol}</p>
                   </div>
-                  <Dialog open={isThresholdDialogOpen} onOpenChange={setIsThresholdDialogOpen}>
-                    <DialogTrigger asChild>
-                      <Button className="w-full h-8 text-sm bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl">
-                        Reduce Threshold
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-[425px] bg-white dark:bg-[#1a1400]/70 border border-white/30 dark:border-yellow-400/20 backdrop-blur-lg rounded-2xl shadow-2xl">
-                      <DialogHeader>
-                        <DialogTitle className="text-xl font-bold text-blue-400 dark:text-yellow-200">Reduce Threshold Supply</DialogTitle>
-                        <p className="text-sm text-gray-600 dark:text-yellow-200 mt-2">
-                          Current threshold: {tokenDetails.thresholdSupply} {tokenDetails.tokenSymbol}
-                        </p>
-                      </DialogHeader>
-                      <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                          <Input
-                            id="newThresholdSupply"
-                            type="number"
-                            placeholder="Enter new threshold supply"
-                            value={newThresholdSupply}
-                            onChange={(e) => setNewThresholdSupply(e.target.value)}
-                            className="h-10"
-                          />
-                          <p className="text-xs text-gray-500 dark:text-yellow-200/70">
-                            Must be less than current threshold supply
-                          </p>
-                        </div>
-                        <Button
-                          onClick={() => {
-                            handleReduceThresholdSupply();
-                            setIsThresholdDialogOpen(false);
-                          }}
-                          disabled={!newThresholdSupply || isReducingThresholdSupply || isSigning}
-                          className="w-full h-10 bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl"
-                        >
-                          {isReducingThresholdSupply || isSigning ? (
-                            <ButtonLoadingState text={isSigning ? "Waiting for signature..." : "Processing..."} />
-                          ) : (
-                            "Update Threshold Supply"
-                          )}
-                        </Button>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
+                  <Button 
+                    onClick={openThresholdModal}
+                    disabled={isWrongChain}
+                    className="w-full h-8 text-sm bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Reduce Threshold
+                  </Button>
                 </div>
 
                 <div className="group relative rounded-2xl p-6 shadow-2xl bg-white/60 dark:bg-[#1a1400]/70 border border-white/30 dark:border-yellow-400/20 backdrop-blur-lg transition-all duration-300 hover:scale-105 hover:shadow-[0_8px_32px_0_rgba(90,180,255,0.25)] dark:hover:shadow-[0_8px_32px_0_rgba(255,217,0,0.25)] hover:border-blue-400 dark:hover:border-yellow-400">
@@ -658,50 +781,13 @@ export default function InteractionClient() {
                     </div>
                     <p className="text-lg font-bold text-blue-400 dark:text-yellow-200">{tokenDetails.maxExpansionRate} %</p>
                   </div>
-                  <Dialog open={isExpansionRateDialogOpen} onOpenChange={setIsExpansionRateDialogOpen}>
-                    <DialogTrigger asChild>
-                      <Button className="w-full h-8 text-sm bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl">
-                        Reduce Rate
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="sm:max-w-[425px] bg-white dark:bg-[#1a1400]/70 border border-white/30 dark:border-yellow-400/20 backdrop-blur-lg rounded-2xl shadow-2xl">
-                      <DialogHeader>
-                        <DialogTitle className="text-xl font-bold text-blue-400 dark:text-yellow-200">Reduce Max Expansion Rate</DialogTitle>
-                        <p className="text-sm text-gray-600 dark:text-yellow-200 mt-2">
-                          Current rate: {tokenDetails.maxExpansionRate}%
-                        </p>
-                      </DialogHeader>
-                      <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                          <Input
-                            id="newMaxExpansionRate"
-                            type="number"
-                            placeholder="Enter new max expansion rate"
-                            value={newMaxExpansionRate}
-                            onChange={(e) => setNewMaxExpansionRate(e.target.value)}
-                            className="h-10"
-                          />
-                          <p className="text-xs text-gray-500 dark:text-yellow-200/70">
-                            Must be less than current expansion rate
-                          </p>
-                        </div>
-                        <Button
-                          onClick={() => {
-                            handleReduceMaxExpansionRate();
-                            setIsExpansionRateDialogOpen(false);
-                          }}
-                          disabled={!newMaxExpansionRate || isReducingMaxExpansionRate || isSigning}
-                          className="w-full h-10 bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl"
-                        >
-                          {isReducingMaxExpansionRate || isSigning ? (
-                            <ButtonLoadingState text={isSigning ? "Waiting for signature..." : "Processing..."} />
-                          ) : (
-                            "Update Max Expansion Rate"
-                          )}
-                        </Button>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
+                  <Button 
+                    onClick={openExpansionRateModal}
+                    disabled={isWrongChain}
+                    className="w-full h-8 text-sm bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Reduce Rate
+                  </Button>
                 </div>
 
                 <div className="group relative rounded-2xl p-6 shadow-2xl bg-white/60 dark:bg-[#1a1400]/70 border border-white/30 dark:border-yellow-400/20 backdrop-blur-lg transition-all duration-300 hover:scale-105 hover:shadow-[0_8px_32px_0_rgba(90,180,255,0.25)] dark:hover:shadow-[0_8px_32px_0_rgba(255,217,0,0.25)] hover:border-blue-400 dark:hover:border-yellow-400">
@@ -717,8 +803,8 @@ export default function InteractionClient() {
                         </p>
                         <Button
                           onClick={handleDisableTransferRestriction}
-                          disabled={isDisablingTransferRestriction || isSigning}
-                          className="w-full h-10 text-sm bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl"
+                          disabled={isDisablingTransferRestriction || isSigning || isWrongChain}
+                          className="w-full h-10 text-sm bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {isDisablingTransferRestriction || isSigning ? (
                             <ButtonLoadingState text={isSigning ? "Waiting for signature..." : "Processing..."} />
