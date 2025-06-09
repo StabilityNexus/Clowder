@@ -67,7 +67,23 @@ contract CATFactory is Ownable {
         return _nextTokenId;
     }
 
-    function getCATAddresses(address _creator) external view returns (address[] memory) {
-        return administerableTokens[_creator];
+    function getCATAddresses(address _creator, uint256 start, uint256 end) external view returns (address[] memory) {
+        address[] memory creatorTokens = administerableTokens[_creator];
+        
+        require(start <= end, "Start index must be less than or equal to end index");
+        require(start < creatorTokens.length, "Start index out of bounds");
+        
+        if (end >= creatorTokens.length) {
+            end = creatorTokens.length - 1;
+        }
+        
+        uint256 resultLength = end - start + 1;
+        address[] memory result = new address[](resultLength);
+        
+        for (uint256 i = 0; i < resultLength; i++) {
+            result[i] = creatorTokens[start + i];
+        }
+        
+        return result;
     }
 }
