@@ -71,8 +71,8 @@ contract ContributionAccountingToken is ERC20Burnable, ERC20Permit, AccessContro
     function mint(address to, uint256 amount) public onlyRole(MINTER_ROLE) {
         require(amount <= maxMintableAmount(), "Exceeds maximum mintable amount");
         
-        uint256 feeAmount = (amount * clowderFee) / denominator;
-        uint256 userAmount = amount - feeAmount;
+        uint256 userAmount = userAmountAfterFees(amount);
+        uint256 feeAmount = amount - userAmount;
         
         // Perform the actual minting: fees are deducted from the amount
         _mint(to, userAmount);
