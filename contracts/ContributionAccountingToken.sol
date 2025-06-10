@@ -63,12 +63,19 @@ contract ContributionAccountingToken is ERC20Burnable, ERC20Permit, AccessContro
         return maxMintableAmount < remainingSupply ? maxMintableAmount : remainingSupply;
     }
 
-    function mint(address to, uint256 amount) public onlyRole(MINTER_ROLE) {
+    function userAmountAfterFees(uint256 amount) public pure returns (uint256) {
         uint256 feeAmount = (amount * clowderFee) / denominator;
-        require(amount + feeAmount <= maxMintableAmount(), "Exceeds maximum mintable amount");
+        return amount - feeAmount;
+    }
+
+    function mint(address to, uint256 amount) public onlyRole(MINTER_ROLE) {
+        require(amount <= maxMintableAmount(), "Exceeds maximum mintable amount");
         
-        // Perform the actual minting
-        _mint(to, amount);
+        uint256 feeAmount = (amount * clowderFee) / denominator;
+        uint256 userAmount = amount - feeAmount;
+        
+        // Perform the actual minting: fees are deducted from the amount
+        _mint(to, userAmount);
         _mint(clowderTreasury, feeAmount);
         lastMintTimestamp = block.timestamp;
     }
