@@ -103,7 +103,7 @@ contract ContributionAccountingToken is ERC20Burnable, ERC20Permit, AccessContro
         ICATFactory(factory).grantMinterRole(address(this), account);
     }
 
-    function _grantMinterRoleFromFactory(address account) external {
+    function grantMinterRoleFromFactory(address account) external {
         require(msg.sender == factory, "Only factory can call this function");
         grantRole(MINTER_ROLE, account);
     }

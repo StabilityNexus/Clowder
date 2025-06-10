@@ -62,7 +62,7 @@ contract CATFactory is Ownable {
                 "Only CAT admin can grant minter role");
         
         mintableTokens[minter].push(catAddress);        
-        ContributionAccountingToken(catAddress)._grantMinterRoleFromFactory(minter);          // Call back to the CAT contract to actually grant the role
+        ContributionAccountingToken(catAddress).grantMinterRoleFromFactory(minter);          // Call back to the CAT contract to actually grant the role
     }
 
     /**
