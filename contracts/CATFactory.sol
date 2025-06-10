@@ -57,6 +57,10 @@ contract CATFactory is Ownable {
      * @param minter The address to grant the minter role.
      */
     function grantMinterRole(address catAddress, address minter) external {
+        // Verify that the caller is the admin of the CAT contract
+        require(ContributionAccountingToken(catAddress).hasRole(ContributionAccountingToken(catAddress).DEFAULT_ADMIN_ROLE(), msg.sender), 
+                "Only CAT admin can grant minter role");
+        
         mintableTokens[minter].push(catAddress);        
         ContributionAccountingToken(catAddress)._grantMinterRoleFromFactory(minter);          // Call back to the CAT contract to actually grant the role
     }
