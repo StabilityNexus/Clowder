@@ -8,7 +8,7 @@ contract CATFactory is Ownable {
     uint256 private _nextTokenId;
 
     // Mapping from owner address to token addresses
-    mapping(address => address[]) public administerableTokens; 
+    mapping(address => address[]) public administerableTokens;  
     mapping(address => address[]) public mintableTokens; 
 
     // Event emitted when a new CAT is created
@@ -54,11 +54,15 @@ contract CATFactory is Ownable {
      * @dev Grants minter role to an address in the CAT contract.
      * This function is called by CAT contracts when their admins want to grant minter roles.
      * @param catAddress The address of the CAT contract calling this function.
+     * @param admin The address of the admin granting the role.
      * @param minter The address to grant the minter role.
      */
-    function grantMinterRole(address catAddress, address minter) external {
-        // Verify that the caller is the admin of the CAT contract
-        require(ContributionAccountingToken(catAddress).hasRole(ContributionAccountingToken(catAddress).DEFAULT_ADMIN_ROLE(), msg.sender), 
+    function grantMinterRole(address catAddress, address admin, address minter) external {
+        // Verify that the caller is the CAT contract
+        require(msg.sender == catAddress, "Only CAT contract can call this function");
+        
+        // Verify that the admin has the admin role in the CAT contract
+        require(ContributionAccountingToken(catAddress).hasRole(ContributionAccountingToken(catAddress).DEFAULT_ADMIN_ROLE(), admin), 
                 "Only CAT admin can grant minter role");
         
         mintableTokens[minter].push(catAddress);        
