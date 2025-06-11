@@ -8,7 +8,6 @@ export function ModeToggle() {
 
   function toggleTheme() {
     const newTheme = theme === "light" ? "dark" : "light";
-    localStorage.setItem("color-scheme", newTheme);
     setTheme(newTheme);
   }
 
