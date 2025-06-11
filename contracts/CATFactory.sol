@@ -59,7 +59,15 @@ contract CATFactory is Ownable {
     function onMinterRoleGranted(address catAddress, address minter) external {
         // Verify that the caller is the CAT contract
         require(msg.sender == catAddress, "Only CAT contract can call this function");
-        mintableTokens[minter].push(catAddress);
+        
+        // Check if catAddress already exists in the array
+        address[] storage minterTokens = mintableTokens[minter];
+        for (uint256 i = 0; i < minterTokens.length; i++) {
+            if (minterTokens[i] == catAddress) {
+                return; 
+            }
+        }
+        minterTokens.push(catAddress);
     }
 
     /**
