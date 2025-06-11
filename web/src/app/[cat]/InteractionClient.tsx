@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useWriteContract, useWaitForTransactionReceipt, useAccount, useChainId } from "wagmi";
-import { parseEther, parseUnits, formatUnits } from "viem";
+import { parseUnits, formatUnits } from "viem";
 import { showTransactionToast } from "@/components/ui/transaction-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { LoadingState } from "@/components/ui/loading-state";
@@ -69,6 +69,39 @@ export default function InteractionClient() {
   const [tokenAddress, setTokenAddress] = useState<`0x${string}`>("0x0");
   const [chainId, setChainId] = useState<SupportedChainId | null>(null);
 
+  // Helper function to add delays between requests
+  const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+  // Helper function to make contract calls with retry logic
+  const makeContractCallWithRetry = useCallback(async (
+    publicClient: ReturnType<typeof getPublicClient>,
+    contractCall: Parameters<NonNullable<ReturnType<typeof getPublicClient>>['readContract']>[0],
+    maxRetries: number = 3
+  ): Promise<unknown> => {
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        return await publicClient!.readContract(contractCall);
+      } catch (error: unknown) {
+        const errorObj = error as { message?: string; status?: number; code?: number };
+        const isRateLimit = errorObj?.message?.includes('rate limit') || 
+                           errorObj?.status === 429 ||
+                           errorObj?.code === -32016;
+        
+        if (attempt === maxRetries - 1) {
+          throw error; // Final attempt failed
+        }
+        
+        if (isRateLimit) {
+          const delayMs = 1000 * Math.pow(2, attempt); // 1s, 2s, 4s
+          console.log(`Rate limit hit, retrying in ${delayMs}ms... (attempt ${attempt + 1})`);
+          await delay(delayMs);
+        } else {
+          throw error; // Non-rate-limit error
+        }
+      }
+    }
+  }, []);
+
   // Function to calculate user amount after fees
   const calculateUserAmountAfterFees = useCallback(async (amount: string) => {
     if (!amount || !tokenAddress || !chainId || isNaN(Number(amount)) || Number(amount) <= 0) {
@@ -93,7 +126,7 @@ export default function InteractionClient() {
       // Fallback calculation
       setUserAmountAfterFees(Number(amount) * 0.995);
     }
-  }, [tokenAddress, chainId, decimals]);
+  }, [tokenAddress, chainId, decimals, makeContractCallWithRetry]);
 
   const [tokenDetails, setTokenDetails] = useState<TokenDetailsState>({
     tokenName: "",
@@ -164,38 +197,6 @@ export default function InteractionClient() {
       setIsLoading(false);
     }
   }, [searchParams, isValidChainId]);
-
-  // Helper function to add delays between requests
-  const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-  // Helper function to make contract calls with retry logic
-  const makeContractCallWithRetry = async (
-    publicClient: any,
-    contractCall: any,
-    maxRetries: number = 3
-  ): Promise<any> => {
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      try {
-        return await publicClient.readContract(contractCall);
-      } catch (error: any) {
-        const isRateLimit = error?.message?.includes('rate limit') || 
-                           error?.status === 429 ||
-                           error?.code === -32016;
-        
-        if (attempt === maxRetries - 1) {
-          throw error; // Final attempt failed
-        }
-        
-        if (isRateLimit) {
-          const delayMs = 1000 * Math.pow(2, attempt); // 1s, 2s, 4s
-          console.log(`Rate limit hit, retrying in ${delayMs}ms... (attempt ${attempt + 1})`);
-          await delay(delayMs);
-        } else {
-          throw error; // Non-rate-limit error
-        }
-      }
-    }
-  };
 
   const getTokenDetails = useCallback(async () => {
     if (!tokenAddress || !chainId || !address) {
@@ -347,7 +348,7 @@ export default function InteractionClient() {
     } finally {
       setIsLoading(false);
     }
-  }, [tokenAddress, chainId, address]);
+  }, [tokenAddress, chainId, address, makeContractCallWithRetry]);
 
   useEffect(() => {
     if (tokenAddress && chainId) {
@@ -966,7 +967,7 @@ export default function InteractionClient() {
                   {!isUserMinter && !isUserAdmin && (
                     <div className="mb-4 p-3 rounded-lg bg-yellow-50 dark:bg-yellow-400/10 border border-yellow-200 dark:border-yellow-400/20">
                       <p className="text-sm text-yellow-700 dark:text-yellow-200 font-medium">
-                        ⚠️ Either you don't have minter role or it has been revoked
+                        ⚠️ Either you don&apos;t have minter role or it has been revoked
                       </p>
                     </div>
                   )}
