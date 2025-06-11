@@ -51,22 +51,15 @@ contract CATFactory is Ownable {
     }
 
     /**
-     * @dev Grants minter role to an address in the CAT contract.
-     * This function is called by CAT contracts when their admins want to grant minter roles.
+     * @dev Notifies the factory that a minter role has been granted in a CAT contract.
+     * This function is called by CAT contracts when their admins grant minter roles.
      * @param catAddress The address of the CAT contract calling this function.
-     * @param admin The address of the admin granting the role.
-     * @param minter The address to grant the minter role.
+     * @param minter The address that was granted the minter role.
      */
-    function grantMinterRole(address catAddress, address admin, address minter) external {
+    function onMinterRoleGranted(address catAddress, address minter) external {
         // Verify that the caller is the CAT contract
         require(msg.sender == catAddress, "Only CAT contract can call this function");
-        
-        // Verify that the admin has the admin role in the CAT contract
-        require(ContributionAccountingToken(catAddress).hasRole(ContributionAccountingToken(catAddress).DEFAULT_ADMIN_ROLE(), admin), 
-                "Only CAT admin can grant minter role");
-        
-        mintableTokens[minter].push(catAddress);        
-        ContributionAccountingToken(catAddress).grantMinterRoleFromFactory(minter);          // Call back to the CAT contract to actually grant the role
+        mintableTokens[minter].push(catAddress);
     }
 
     /**
@@ -77,7 +70,14 @@ contract CATFactory is Ownable {
         return _nextTokenId;
     }
 
-    function getCATAddresses(address _creator, uint256 start, uint256 end) external view returns (address[] memory) {
+    /**
+     * @dev Returns a paginated list of CAT addresses that the given address can administer.
+     * @param _creator The address of the creator/administrator.
+     * @param start The starting index for pagination.
+     * @param end The ending index for pagination.
+     * @return An array of CAT addresses that the creator can administer.
+     */
+    function getCreatorCATAddresses(address _creator, uint256 start, uint256 end) external view returns (address[] memory) {
         address[] memory creatorTokens = administerableTokens[_creator];
         
         require(start <= end, "Start index must be less than or equal to end index");
@@ -96,4 +96,32 @@ contract CATFactory is Ownable {
         
         return result;
     }
+
+    function getMinterCATAddresses(address _minter, uint256 start, uint256 end) external view returns (address[] memory) {
+        address[] memory minterTokens = mintableTokens[_minter];
+        
+        require(start <= end, "Start index must be less than or equal to end index");
+        require(start <= minterTokens.length, "Start index out of bounds");
+        
+        if (end >= minterTokens.length) {
+            end = minterTokens.length;
+        }
+        
+        uint256 resultLength = end - start;
+        address[] memory result = new address[](resultLength);
+        
+        for (uint256 i = 0; i < resultLength; i++) {
+            result[i] = minterTokens[start + i];
+        }
+        
+        return result;
+    }
+
+    function getCreatorCATCount(address _creator) external view returns (uint256) {
+        return administerableTokens[_creator].length;
+    }
+    function getMinterCATCount(address _minter) external view returns (uint256) {
+        return mintableTokens[_minter].length;
+    }
+
 }
