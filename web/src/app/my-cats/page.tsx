@@ -163,7 +163,7 @@ export default function MyCATsPage() {
       // Get counts first
       const { totalCreatorCATs, } = await fetchTotalCounts();
 
-      let catsToFetch: CatDetails[] = [];
+      const catsToFetch: CatDetails[] = [];
       let remainingToFetch = catsPerPage;
       let currentGlobalIndex = startIndex;
 
@@ -200,13 +200,13 @@ export default function MyCATsPage() {
       console.error("Error fetching CATs for page:", error);
       return [];
     }
-     }, [address, pagination.catsPerPage, roleFilter]);
+     }, [address, pagination.catsPerPage, roleFilter, fetchTotalCounts]);
 
   const fetchCreatorCATs = useCallback(async (startIndex: number, endIndex: number): Promise<CatDetails[]> => {
     if (!address) return [];
 
     try {
-      let allCreatorCATs: CatDetails[] = [];
+      const allCreatorCATs: CatDetails[] = [];
       let currentStart = startIndex;
       let currentEnd = endIndex;
 
@@ -258,13 +258,13 @@ export default function MyCATsPage() {
       console.error("Error fetching creator CATs:", error);
       return [];
     }
-  }, [address]);
+  }, [address, fetchCATDetails]);
 
   const fetchMinterCATs = useCallback(async (startIndex: number, endIndex: number): Promise<CatDetails[]> => {
     if (!address) return [];
 
     try {
-      let allMinterCATs: CatDetails[] = [];
+      const allMinterCATs: CatDetails[] = [];
       let currentStart = startIndex;
       let currentEnd = endIndex;
 
@@ -316,7 +316,7 @@ export default function MyCATsPage() {
       console.error("Error fetching minter CATs:", error);
       return [];
     }
-  }, [address]);
+  }, [address, fetchCATDetails]);
 
   // Helper function to add delays between requests
   const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -324,7 +324,7 @@ export default function MyCATsPage() {
   // Helper function to fetch token details with retry logic
   const fetchTokenDetails = async (
     catAddress: `0x${string}`,
-    publicClient: any,
+    publicClient: ReturnType<typeof getPublicClient>,
     chainId: SupportedChainId,
     defaultRole: 'admin' | 'minter' | 'both'
   ): Promise<CatDetails | null> => {
@@ -352,10 +352,11 @@ export default function MyCATsPage() {
           tokenSymbol: tokenSymbol || "",
           userRole: defaultRole,
         };
-      } catch (error: any) {
-        const isRateLimit = error?.message?.includes('rate limit') || 
-                           error?.status === 429 ||
-                           error?.code === -32016;
+      } catch (error: unknown) {
+        const errorObj = error as { message?: string; status?: number; code?: number };
+        const isRateLimit = errorObj?.message?.includes('rate limit') || 
+                           errorObj?.status === 429 ||
+                           errorObj?.code === -32016;
         
         if (attempt === maxRetries - 1) {
           // Final attempt failed - return fallback
@@ -425,7 +426,7 @@ export default function MyCATsPage() {
       console.error("Error fetching CAT details:", error);
       return [];
     }
-  }, []);
+  }, [fetchTokenDetails]);
 
   // Initialize pagination and load first page
   const initializePagination = useCallback(async () => {
