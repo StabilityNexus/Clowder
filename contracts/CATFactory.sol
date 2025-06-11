@@ -9,9 +9,10 @@ contract CATFactory is Ownable {
 
     // Mapping from owner address to token addresses
     mapping(address => address[]) public administerableTokens;  
-    mapping(address => address[]) public mintableTokens; 
+    mapping(address => address[]) public mintableTokens;
+    
+    mapping(address => mapping(address => bool)) public isMinterForCAT; 
 
-    // Event emitted when a new CAT is created
     event CATCreated(address indexed owner, address catAddress, uint256 tokenId);
 
     constructor() Ownable(msg.sender) {}
@@ -53,76 +54,51 @@ contract CATFactory is Ownable {
     /**
      * @dev Notifies the factory that a minter role has been granted in a CAT contract.
      * This function is called by CAT contracts when their admins grant minter roles.
-     * @param catAddress The address of the CAT contract calling this function.
      * @param minter The address that was granted the minter role.
      */
-    function onMinterRoleGranted(address catAddress, address minter) external {
-        // Verify that the caller is the CAT contract
-        require(msg.sender == catAddress, "Only CAT contract can call this function");
-        
-        // Check if catAddress already exists in the array
-        address[] storage minterTokens = mintableTokens[minter];
-        for (uint256 i = 0; i < minterTokens.length; i++) {
-            if (minterTokens[i] == catAddress) {
-                return; 
-            }
+    function onMinterRoleGranted(address minter) external {    
+        if (isMinterForCAT[minter][msg.sender]) {
+            return; 
         }
-        minterTokens.push(catAddress);
+        isMinterForCAT[minter][msg.sender] = true;
+        mintableTokens[minter].push(msg.sender);
     }
 
-    /**
-     * @dev Returns the total number of CATs created.
-     * @return The total number of CATs.
-     */
     function totalCATs() public view returns (uint256) {
         return _nextTokenId;
     }
 
     /**
-     * @dev Returns a paginated list of CAT addresses that the given address can administer.
-     * @param _creator The address of the creator/administrator.
+     * @dev Internal function to get a subarray from any address array with pagination.
+     * @param tokens The array of token addresses to paginate.
      * @param start The starting index for pagination.
      * @param end The ending index for pagination.
-     * @return An array of CAT addresses that the creator can administer.
+     * @return An array of addresses for the specified range.
      */
-    function getCreatorCATAddresses(address _creator, uint256 start, uint256 end) external view returns (address[] memory) {
-        address[] memory creatorTokens = administerableTokens[_creator];
-        
+    function _getSubArray(address[] memory tokens, uint256 start, uint256 end) internal pure returns (address[] memory) {
         require(start <= end, "Start index must be less than or equal to end index");
-        require(start <= creatorTokens.length, "Start index out of bounds");
+        require(start <= tokens.length, "Start index out of bounds");
         
-        if (end >= creatorTokens.length) {
-            end = creatorTokens.length;
+        if (end >= tokens.length) {
+            end = tokens.length;
         }
         
         uint256 resultLength = end - start;
         address[] memory result = new address[](resultLength);
         
         for (uint256 i = 0; i < resultLength; i++) {
-            result[i] = creatorTokens[start + i];
+            result[i] = tokens[start + i];
         }
         
         return result;
     }
 
+    function getCreatorCATAddresses(address _creator, uint256 start, uint256 end) external view returns (address[] memory) {
+        return _getSubArray(administerableTokens[_creator], start, end);
+    }
+
     function getMinterCATAddresses(address _minter, uint256 start, uint256 end) external view returns (address[] memory) {
-        address[] memory minterTokens = mintableTokens[_minter];
-        
-        require(start <= end, "Start index must be less than or equal to end index");
-        require(start <= minterTokens.length, "Start index out of bounds");
-        
-        if (end >= minterTokens.length) {
-            end = minterTokens.length;
-        }
-        
-        uint256 resultLength = end - start;
-        address[] memory result = new address[](resultLength);
-        
-        for (uint256 i = 0; i < resultLength; i++) {
-            result[i] = minterTokens[start + i];
-        }
-        
-        return result;
+        return _getSubArray(mintableTokens[_minter], start, end);
     }
 
     function getCreatorCATCount(address _creator) external view returns (uint256) {

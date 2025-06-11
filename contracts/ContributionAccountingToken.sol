@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 
 interface ICATFactory {
     function grantMinterRole(address catAddress, address minter) external;
-    function onMinterRoleGranted(address catAddress, address minter) external;
+    function onMinterRoleGranted(address minter) external;
 }
 
 contract ContributionAccountingToken is ERC20Burnable, ERC20Permit, AccessControl {
@@ -108,7 +108,7 @@ contract ContributionAccountingToken is ERC20Burnable, ERC20Permit, AccessContro
 
     function grantMinterRole(address account) public onlyRole(DEFAULT_ADMIN_ROLE) {
         _grantRole(MINTER_ROLE, account);
-        ICATFactory(factory).onMinterRoleGranted(address(this), account);
+        ICATFactory(factory).onMinterRoleGranted(account);
     }
 
     function revokeMinterRole(address account) public onlyRole(DEFAULT_ADMIN_ROLE) {
