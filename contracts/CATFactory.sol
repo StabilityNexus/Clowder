@@ -70,12 +70,12 @@ contract CATFactory is Ownable {
 
     /**
      * @dev Internal function to get a subarray from any address array with pagination.
-     * @param tokens The array of token addresses to paginate.
+     * @param tokens The storage reference to the array of token addresses.
      * @param start The starting index for pagination.
      * @param end The ending index for pagination.
      * @return An array of addresses for the specified range.
      */
-    function _getSubArray(address[] memory tokens, uint256 start, uint256 end) internal pure returns (address[] memory) {
+    function _getSubArray(address[] storage tokens, uint256 start, uint256 end) internal view returns (address[] memory) {
         require(start <= end, "Start index must be less than or equal to end index");
         require(start <= tokens.length, "Start index out of bounds");
         
