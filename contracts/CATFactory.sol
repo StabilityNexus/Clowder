@@ -7,11 +7,11 @@ import "./ContributionAccountingToken.sol";
 contract CATFactory is Ownable {
     uint256 private _nextTokenId;
 
-    // Mapping from owner address to token addresses
-    mapping(address => address[]) public administerableTokens; 
-    mapping(address => address[]) public mintableTokens; 
+    mapping(address => address[]) public creatorTokens;  // Mapping from owner address to token addresses
+    mapping(address => address[]) public minterTokens;
+    
+    mapping(address => mapping(address => bool)) public isMinterForCAT; 
 
-    // Event emitted when a new CAT is created
     event CATCreated(address indexed owner, address catAddress, uint256 tokenId);
 
     constructor() Ownable(msg.sender) {}
@@ -34,6 +34,7 @@ contract CATFactory is Ownable {
     ) public returns (address) {
         ContributionAccountingToken newCAT = new ContributionAccountingToken(
             msg.sender,
+            address(this),
             maxSupply,
             thresholdSupply,
             maxExpansionRate,
@@ -42,32 +43,54 @@ contract CATFactory is Ownable {
         );
 
         address catAddress = address(newCAT);
-        administerableTokens[msg.sender].push(catAddress);
+        creatorTokens[msg.sender].push(catAddress);
         emit CATCreated(msg.sender, catAddress, _nextTokenId);
-        _nextTokenId++; // Increment tokenId for the next contract
+        _nextTokenId++;
 
         return catAddress;
     }
 
     /**
-     * @dev Grants minter role to an address in the CAT contract.
-     * @param catAddress The address of the CAT contract.
-     * @param minter The address to grant the minter role.
+     * @dev Notifies the factory that a minter role has been granted in a CAT contract.
+     * This function is called by CAT contracts when their admins grant minter roles.
      */
-    function grantMinterRole(address catAddress, address minter) public onlyOwner {
-        ContributionAccountingToken(catAddress).grantMinterRole(minter);
-        mintableTokens[minter].push(catAddress); // Update mintable tokens mapping
+    function onMinterRoleGranted(address minter) external {    
+        if (!isMinterForCAT[minter][msg.sender]) {
+            isMinterForCAT[minter][msg.sender] = true;
+            minterTokens[minter].push(msg.sender); 
+        }
     }
 
     /**
-     * @dev Returns the total number of CATs created.
-     * @return The total number of CATs.
+     * @dev Internal function to get a subarray from any address array with pagination.
+     * @param tokens The storage reference to the array of token addresses. start and end are the indexes of the subarray.
+     * @return An array of addresses for the specified range.
      */
-    function totalCATs() public view returns (uint256) {
-        return _nextTokenId;
+    function _getSubArray(address[] storage tokens, uint256 start, uint256 end) internal view returns (address[] memory) {
+        require(start <= end, "Start index must be less than or equal to end index");
+        require(start <= tokens.length, "Start index out of bounds");
+        
+        if (end >= tokens.length) {
+            end = tokens.length;
+        }
+        
+        uint256 resultLength = end - start;
+        address[] memory result = new address[](resultLength);
+
+        for (uint256 i = 0; i < resultLength; i++) {
+            result[i] = tokens[start + i];
+        }        
+        return result;
     }
 
-    function getCATAddresses(address _creator) external view returns (address[] memory) {
-        return administerableTokens[_creator];
+    function getCreatorCATAddresses(address _creator, uint256 start, uint256 end) external view returns (address[] memory) {
+        return _getSubArray(creatorTokens[_creator], start, end);
     }
+    function getMinterCATAddresses(address _minter, uint256 start, uint256 end) external view returns (address[] memory) {
+        return _getSubArray(minterTokens[_minter], start, end);
+    }
+
+    function totalCATs() public view returns (uint256) { return _nextTokenId; }
+    function getCreatorCATCount(address _creator) external view returns (uint256) { return creatorTokens[_creator].length; }
+    function getMinterCATCount(address _minter) external view returns (uint256) { return minterTokens[_minter].length; }
 }
