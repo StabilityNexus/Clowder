@@ -83,7 +83,7 @@ export default function Home() {
 
         router.push(`/c?vault=${catAddress}&chainId=${selectedChain}`);
         setShowPopup(false);
-      } catch (error) {
+      } catch {
         showTransactionToast({
           hash: "0x0" as `0x${string}`,
           chainId: Number(selectedChain),

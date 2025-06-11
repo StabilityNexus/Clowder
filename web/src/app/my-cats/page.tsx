@@ -258,7 +258,7 @@ export default function MyCATsPage() {
       console.error("Error fetching creator CATs:", error);
       return [];
     }
-  }, [address, fetchCATDetails]);
+  }, [address]);
 
   const fetchMinterCATs = useCallback(async (startIndex: number, endIndex: number): Promise<CatDetails[]> => {
     if (!address) return [];
@@ -316,7 +316,7 @@ export default function MyCATsPage() {
       console.error("Error fetching minter CATs:", error);
       return [];
     }
-  }, [address, fetchCATDetails]);
+  }, [address]);
 
   // Helper function to add delays between requests
   const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -426,7 +426,7 @@ export default function MyCATsPage() {
       console.error("Error fetching CAT details:", error);
       return [];
     }
-  }, [fetchTokenDetails]);
+  }, []);
 
   // Initialize pagination and load first page
   const initializePagination = useCallback(async () => {
