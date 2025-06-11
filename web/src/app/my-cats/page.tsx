@@ -752,10 +752,14 @@ export default function MyCATsPage() {
                   <p className="text-lg text-[#1e40af] dark:text-yellow-100">
                     {searchQuery || selectedChainId !== "all" 
                       ? "No CATs match your search criteria"
+                      : roleFilter === "minter"
+                      ? "You don't have any CATs with minter role"
+                      : roleFilter === "creator"
+                      ? "You haven't created any CATs yet"
                       : "Start by creating your first Contribution Accounting Token"}
                   </p>
                 </div>
-                {!searchQuery && selectedChainId === "all" && (
+                {!searchQuery && selectedChainId === "all" && roleFilter !== "minter" && (
                   <Link href="/create">
                     <motion.button
                       className="inline-flex items-center space-x-2 px-8 py-4 bg-gradient-to-r from-blue-500 to-blue-300 dark:from-[#FFD600] dark:to-[#BA9901] text-white dark:text-black rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
@@ -763,7 +767,7 @@ export default function MyCATsPage() {
                       whileTap={{ scale: 0.95 }}
                     >
                       <Plus className="w-5 h-5" />
-                      <span>Create Your First CAT</span>
+                      <span>{roleFilter === "creator" ? "Create Your First CAT" : "Create Your First CAT"}</span>
                     </motion.button>
                   </Link>
                 )}
