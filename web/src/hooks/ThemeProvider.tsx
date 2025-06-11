@@ -5,19 +5,15 @@ import { ThemeProvider as NextThemesProvider } from "next-themes";
 import { type ThemeProviderProps } from "next-themes/dist/types";
 
 export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
-  const [isMounted, setIsMounted] = React.useState(false);
-
-  React.useEffect(() => {
-    setIsMounted(true);
-  }, []);
-
-  if (!isMounted) {
-    // Prevent rendering until after hydration to avoid mismatches
-    return <>{children}</>;
-  }
-
   return (
-    <NextThemesProvider attribute="class" defaultTheme="dark" {...props}>
+    <NextThemesProvider 
+      attribute="class" 
+      defaultTheme="light" 
+      enableSystem={false}
+      disableTransitionOnChange
+      storageKey="clowder-theme"
+      {...props}
+    >
       {children}
     </NextThemesProvider>
   );

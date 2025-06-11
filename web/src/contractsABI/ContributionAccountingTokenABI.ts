@@ -2,6 +2,7 @@ const CONTRIBUTION_ACCOUNTING_TOKEN_ABI = [
   {
     "inputs": [
       { "internalType": "address", "name": "defaultAdmin", "type": "address" },
+      { "internalType": "address", "name": "_factory", "type": "address" },
       { "internalType": "uint256", "name": "_maxSupply", "type": "uint256" },
       { "internalType": "uint256", "name": "_thresholdSupply", "type": "uint256" },
       { "internalType": "uint256", "name": "_maxExpansionRate", "type": "uint256" },
@@ -208,6 +209,16 @@ const CONTRIBUTION_ACCOUNTING_TOKEN_ABI = [
     "type": "function"
   },
   {
+    "inputs": [{ "internalType": "uint256", "name": "amount", "type": "uint256" }],
+    "name": "userAmountAfterFees",
+    "outputs": [
+      { "internalType": "uint256", "name": "userAmount", "type": "uint256" },
+      { "internalType": "uint256", "name": "feeAmount", "type": "uint256" }
+    ],
+    "stateMutability": "pure",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "maxSupply",
     "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
@@ -227,6 +238,20 @@ const CONTRIBUTION_ACCOUNTING_TOKEN_ABI = [
   {
     "inputs": [],
     "name": "MINTER_ROLE",
+    "outputs": [{ "internalType": "bytes32", "name": "", "type": "bytes32" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "DEFAULT_ADMIN_ROLE",
+    "outputs": [{ "internalType": "bytes32", "name": "", "type": "bytes32" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "ADMIN_ROLE",
     "outputs": [{ "internalType": "bytes32", "name": "", "type": "bytes32" }],
     "stateMutability": "view",
     "type": "function"
@@ -328,6 +353,30 @@ const CONTRIBUTION_ACCOUNTING_TOKEN_ABI = [
   {
     "inputs": [{ "internalType": "address", "name": "account", "type": "address" }],
     "name": "revokeMinterRole",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "factory",
+    "outputs": [{ "internalType": "address", "name": "", "type": "address" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{ "internalType": "uint256", "name": "amount", "type": "uint256" }],
+    "name": "burn",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "address", "name": "account", "type": "address" },
+      { "internalType": "uint256", "name": "amount", "type": "uint256" }
+    ],
+    "name": "burnFrom",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useWriteContract, useWaitForTransactionReceipt, useAccount, useChainId } from "wagmi";
-import { parseEther } from "viem";
+import { parseEther, parseUnits, formatUnits } from "viem";
 import { showTransactionToast } from "@/components/ui/transaction-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { LoadingState } from "@/components/ui/loading-state";
@@ -31,6 +31,8 @@ const CHAIN_NAMES: Record<SupportedChainId, string> = {
   8453: "Base"
 };
 
+
+
 interface TokenDetailsState {
   tokenName: string;
   tokenSymbol: string;
@@ -38,17 +40,21 @@ interface TokenDetailsState {
   thresholdSupply: number;
   maxExpansionRate: number;
   currentSupply: number;
-  transactionHash: string;
-  tokenAddress: string;
-  timestamp: string;
   lastMintTimestamp: number;
   maxMintableAmount: number;
 }
 
 export default function InteractionClient() {
   const searchParams = useSearchParams();
-  const { isConnected } = useAccount();
+  const { isConnected, address } = useAccount();
   const currentChainId = useChainId();
+
+  // Helper function to format numbers with limited decimals and full precision on hover
+  const formatNumber = (num: number, decimals: number = 4): string => {
+    if (num === 0) return "0";
+    if (num < 0.0001) return num.toExponential(2);
+    return num.toFixed(decimals);
+  };
   
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -58,9 +64,36 @@ export default function InteractionClient() {
   const [newMaxExpansionRate, setNewMaxExpansionRate] = useState("");
   const [transferRestricted, setTransferRestricted] = useState<boolean>(true);
   const [mintToAddress, setMintToAddress] = useState<string>("");
+  const [decimals, setDecimals] = useState<number>(18);
 
   const [tokenAddress, setTokenAddress] = useState<`0x${string}`>("0x0");
   const [chainId, setChainId] = useState<SupportedChainId | null>(null);
+
+  // Function to calculate user amount after fees
+  const calculateUserAmountAfterFees = useCallback(async (amount: string) => {
+    if (!amount || !tokenAddress || !chainId || isNaN(Number(amount)) || Number(amount) <= 0) {
+      setUserAmountAfterFees(0);
+      return;
+    }
+
+    try {
+      const publicClient = getPublicClient(config, { chainId });
+      if (!publicClient) return;
+
+      const userAmount = await makeContractCallWithRetry(publicClient, {
+        address: tokenAddress,
+        abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
+        functionName: "userAmountAfterFees",
+        args: [parseUnits(amount, decimals)],
+      });
+
+      setUserAmountAfterFees(Number(formatUnits(userAmount as bigint, decimals)));
+    } catch (error) {
+      console.error("Error calculating user amount after fees:", error);
+      // Fallback calculation
+      setUserAmountAfterFees(Number(amount) * 0.995);
+    }
+  }, [tokenAddress, chainId, decimals]);
 
   const [tokenDetails, setTokenDetails] = useState<TokenDetailsState>({
     tokenName: "",
@@ -69,9 +102,6 @@ export default function InteractionClient() {
     thresholdSupply: 0,
     maxExpansionRate: 0,
     currentSupply: 0,
-    transactionHash: "",
-    tokenAddress: "",
-    timestamp: "",
     lastMintTimestamp: 0,
     maxMintableAmount: 0,
   });
@@ -80,6 +110,9 @@ export default function InteractionClient() {
   const [isSigning, setIsSigning] = useState(false);
 
   const [minterAddress, setMinterAddress] = useState<string>("");
+  const [isUserAdmin, setIsUserAdmin] = useState<boolean>(false);
+  const [isUserMinter, setIsUserMinter] = useState<boolean>(false);
+  const [userAmountAfterFees, setUserAmountAfterFees] = useState<number>(0);
   const { writeContract: grantMinterRole, data: grantMinterRoleData } = useWriteContract();
   const { writeContract: revokeMinterRole, data: revokeMinterRoleData } = useWriteContract();
 
@@ -132,8 +165,40 @@ export default function InteractionClient() {
     }
   }, [searchParams, isValidChainId]);
 
+  // Helper function to add delays between requests
+  const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+  // Helper function to make contract calls with retry logic
+  const makeContractCallWithRetry = async (
+    publicClient: any,
+    contractCall: any,
+    maxRetries: number = 3
+  ): Promise<any> => {
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        return await publicClient.readContract(contractCall);
+      } catch (error: any) {
+        const isRateLimit = error?.message?.includes('rate limit') || 
+                           error?.status === 429 ||
+                           error?.code === -32016;
+        
+        if (attempt === maxRetries - 1) {
+          throw error; // Final attempt failed
+        }
+        
+        if (isRateLimit) {
+          const delayMs = 1000 * Math.pow(2, attempt); // 1s, 2s, 4s
+          console.log(`Rate limit hit, retrying in ${delayMs}ms... (attempt ${attempt + 1})`);
+          await delay(delayMs);
+        } else {
+          throw error; // Non-rate-limit error
+        }
+      }
+    }
+  };
+
   const getTokenDetails = useCallback(async () => {
-    if (!tokenAddress || !chainId) {
+    if (!tokenAddress || !chainId || !address) {
       setError("Invalid token address or chain ID");
       setIsLoading(false);
       return;
@@ -148,74 +213,133 @@ export default function InteractionClient() {
         throw new Error(`No public client available for chain ${chainId}`);
       }
 
-      const [name, symbol, maxSupply, threshold, expansionRate, currentSupply, lastMint, maxMintable] =
-        (await Promise.all([
-          publicClient.readContract({
-            address: tokenAddress,
-            abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
-            functionName: "name",
-          }),
-          publicClient.readContract({
-            address: tokenAddress,
-            abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
-            functionName: "symbol",
-          }),
-          publicClient.readContract({
-            address: tokenAddress,
-            abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
-            functionName: "maxSupply",
-          }),
-          publicClient.readContract({
-            address: tokenAddress,
-            abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
-            functionName: "thresholdSupply",
-          }),
-          publicClient.readContract({
-            address: tokenAddress,
-            abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
-            functionName: "maxExpansionRate",
-          }),
-          publicClient.readContract({
-            address: tokenAddress,
-            abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
-            functionName: "totalSupply",
-          }),
-          publicClient.readContract({
-            address: tokenAddress,
-            abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
-            functionName: "lastMintTimestamp",
-          }),
-          publicClient.readContract({
-            address: tokenAddress,
-            abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
-            functionName: "maxMintableAmount",
-          }),
-        ])) as [string, string, bigint, bigint, bigint, bigint, bigint, bigint];
+      // Batch 1: Basic token info (with delays between calls)
+      const name = await makeContractCallWithRetry(publicClient, {
+        address: tokenAddress,
+        abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
+        functionName: "name",
+      });
+      await delay(200);
+
+      const symbol = await makeContractCallWithRetry(publicClient, {
+        address: tokenAddress,
+        abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
+        functionName: "symbol",
+      });
+      await delay(200);
+
+      // Fetch decimals
+      const tokenDecimals = await makeContractCallWithRetry(publicClient, {
+        address: tokenAddress,
+        abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
+        functionName: "decimals",
+      });
+      await delay(200);
 
       if (!name || !symbol) {
         throw new Error("Invalid token contract");
       }
 
+      // Set decimals state
+      const decimalsValue = Number(tokenDecimals as bigint);
+      setDecimals(decimalsValue);
+
+      // Batch 2: Token parameters (small batches with delays)
+      const [maxSupply, threshold] = await Promise.all([
+        makeContractCallWithRetry(publicClient, {
+          address: tokenAddress,
+          abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
+          functionName: "maxSupply",
+        }),
+        makeContractCallWithRetry(publicClient, {
+          address: tokenAddress,
+          abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
+          functionName: "thresholdSupply",
+        }),
+      ]);
+      await delay(300);
+
+      const [expansionRate, currentSupply] = await Promise.all([
+        makeContractCallWithRetry(publicClient, {
+          address: tokenAddress,
+          abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
+          functionName: "maxExpansionRate",
+        }),
+        makeContractCallWithRetry(publicClient, {
+          address: tokenAddress,
+          abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
+          functionName: "totalSupply",
+        }),
+      ]);
+      await delay(300);
+
+      const [lastMint, maxMintable] = await Promise.all([
+        makeContractCallWithRetry(publicClient, {
+          address: tokenAddress,
+          abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
+          functionName: "lastMintTimestamp",
+        }),
+        makeContractCallWithRetry(publicClient, {
+          address: tokenAddress,
+          abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
+          functionName: "maxMintableAmount",
+        }),
+      ]);
+      await delay(300);
+
       setTokenDetails({
-        tokenName: name,
-        tokenSymbol: symbol,
-        maxSupply: Number(maxSupply) / 10 ** 18,
-        thresholdSupply: Number(threshold) / 10 ** 18,
-        maxExpansionRate: Number(expansionRate) / 100,
-        currentSupply: Number(currentSupply) / 10 ** 18,
-        transactionHash: tokenAddress,
-        tokenAddress: tokenAddress,
-        timestamp: new Date().toISOString(),
-        lastMintTimestamp: Number(lastMint),
-        maxMintableAmount: Number(maxMintable) / 10 ** 18,
+        tokenName: name as string,
+        tokenSymbol: symbol as string,
+        maxSupply: Number(formatUnits(maxSupply as bigint, decimalsValue)),
+        thresholdSupply: Number(formatUnits(threshold as bigint, decimalsValue)),
+        maxExpansionRate: Number(expansionRate as bigint) / 100,
+        currentSupply: Number(formatUnits(currentSupply as bigint, decimalsValue)),
+        lastMintTimestamp: Number(lastMint as bigint),
+        maxMintableAmount: Number(formatUnits(maxMintable as bigint, decimalsValue)),
       });
 
-      const restricted = (await publicClient.readContract({
+      // Batch 3: Transfer restrictions
+      const restricted = await makeContractCallWithRetry(publicClient, {
         address: tokenAddress,
         abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
         functionName: "transferRestricted",
-      })) as boolean;
-      setTransferRestricted(restricted);
+      });
+      setTransferRestricted(restricted as boolean);
+      await delay(300);
+
+      // Batch 4: User roles (if address is available)
+      if (address) {
+        const adminRole = await makeContractCallWithRetry(publicClient, {
+          address: tokenAddress,
+          abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
+          functionName: "DEFAULT_ADMIN_ROLE",
+        });
+        await delay(300);
+
+        const hasAdminRole = await makeContractCallWithRetry(publicClient, {
+          address: tokenAddress,
+          abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
+          functionName: "hasRole",
+          args: [adminRole as `0x${string}`, address as `0x${string}`],
+        });
+        setIsUserAdmin(hasAdminRole as boolean);
+        await delay(300);
+
+        const minterRole = await makeContractCallWithRetry(publicClient, {
+          address: tokenAddress,
+          abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
+          functionName: "MINTER_ROLE",
+        });
+        await delay(300);
+
+        const hasMinterRole = await makeContractCallWithRetry(publicClient, {
+          address: tokenAddress,
+          abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
+          functionName: "hasRole",
+          args: [minterRole as `0x${string}`, address as `0x${string}`],
+        });
+        setIsUserMinter(hasMinterRole as boolean);
+      }
       
     } catch (error) {
       console.error("Error fetching token details:", error);
@@ -223,18 +347,15 @@ export default function InteractionClient() {
     } finally {
       setIsLoading(false);
     }
-  }, [tokenAddress, chainId]);
+  }, [tokenAddress, chainId, address]);
 
   useEffect(() => {
     if (tokenAddress && chainId) {
       getTokenDetails();
-      // Set the token address in the details
-      setTokenDetails(prev => ({
-        ...prev,
-        tokenAddress: tokenAddress
-      }));
     }
   }, [tokenAddress, chainId, getTokenDetails]);
+
+
 
   // Contract write hooks
   const { writeContract: mint, data: mintData } = useWriteContract();
@@ -353,6 +474,11 @@ export default function InteractionClient() {
     }
   }, [revokeMinterRoleData, chainId]);
 
+  // Calculate user amount after fees when mint amount changes
+  useEffect(() => {
+    calculateUserAmountAfterFees(mintAmount);
+  }, [mintAmount, calculateUserAmountAfterFees]);
+
   const handleMint = async () => {
     try {
       setIsSigning(true);
@@ -360,7 +486,7 @@ export default function InteractionClient() {
         abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
         address: tokenAddress,
         functionName: "mint",
-        args: [mintToAddress as `0x${string}`, parseEther(mintAmount)]
+        args: [mintToAddress as `0x${string}`, parseUnits(mintAmount, decimals)]
       });
     } catch (error) {
       console.error("Error minting tokens:", error);
@@ -381,7 +507,7 @@ export default function InteractionClient() {
         abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
         address: tokenAddress,
         functionName: "reduceMaxSupply",
-        args: [parseEther(newMaxSupply)]
+        args: [parseUnits(newMaxSupply, decimals)]
       });
     } catch (error) {
       console.error("Error reducing max supply:", error);
@@ -402,7 +528,7 @@ export default function InteractionClient() {
         abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
         address: tokenAddress,
         functionName: "reduceThresholdSupply",
-        args: [parseEther(newThresholdSupply)]
+        args: [parseUnits(newThresholdSupply, decimals)]
       });
     } catch (error) {
       console.error("Error reducing threshold supply:", error);
@@ -749,10 +875,10 @@ export default function InteractionClient() {
                   </div>
                   <Button 
                     onClick={openMaxSupplyModal}
-                    disabled={isWrongChain}
+                    disabled={isWrongChain || !isUserAdmin}
                     className="w-full h-8 text-sm bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Reduce Max Supply
+                    {!isUserAdmin ? "Admin Only" : "Reduce Max Supply"}
                   </Button>
                 </div>
 
@@ -766,10 +892,10 @@ export default function InteractionClient() {
                   </div>
                   <Button 
                     onClick={openThresholdModal}
-                    disabled={isWrongChain}
+                    disabled={isWrongChain || !isUserAdmin}
                     className="w-full h-8 text-sm bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Reduce Threshold
+                    {!isUserAdmin ? "Admin Only" : "Reduce Threshold"}
                   </Button>
                 </div>
 
@@ -783,10 +909,10 @@ export default function InteractionClient() {
                   </div>
                   <Button 
                     onClick={openExpansionRateModal}
-                    disabled={isWrongChain}
+                    disabled={isWrongChain || !isUserAdmin}
                     className="w-full h-8 text-sm bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Reduce Rate
+                    {!isUserAdmin ? "Admin Only" : "Reduce Rate"}
                   </Button>
                 </div>
 
@@ -803,10 +929,12 @@ export default function InteractionClient() {
                         </p>
                         <Button
                           onClick={handleDisableTransferRestriction}
-                          disabled={isDisablingTransferRestriction || isSigning || isWrongChain}
+                          disabled={isDisablingTransferRestriction || isSigning || isWrongChain || !isUserAdmin}
                           className="w-full h-10 text-sm bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                          {isDisablingTransferRestriction || isSigning ? (
+                          {!isUserAdmin ? (
+                            "Admin Only"
+                          ) : isDisablingTransferRestriction || isSigning ? (
                             <ButtonLoadingState text={isSigning ? "Waiting for signature..." : "Processing..."} />
                           ) : (
                             <div className="flex items-center gap-2">
@@ -834,21 +962,83 @@ export default function InteractionClient() {
                     <Coins className="h-5 w-5 text-green-500 dark:text-[#FFD600]" />
                     <h3 className="text-lg font-semibold text-blue-400 dark:text-yellow-200">Mint Tokens</h3>
                   </div>
+                  
+                  {!isUserMinter && !isUserAdmin && (
+                    <div className="mb-4 p-3 rounded-lg bg-yellow-50 dark:bg-yellow-400/10 border border-yellow-200 dark:border-yellow-400/20">
+                      <p className="text-sm text-yellow-700 dark:text-yellow-200 font-medium">
+                        ⚠️ Either you don't have minter role or it has been revoked
+                      </p>
+                    </div>
+                  )}
+                  
                   <div className="space-y-4">
                     <div className="flex items-center justify-between mb-4">
-                      <p className="text-sm text-gray-600 dark:text-yellow-200">Max Mintable Amount: <span className="font-bold">{tokenDetails.maxMintableAmount} {tokenDetails.tokenSymbol}</span></p>
-                      <p className="text-sm text-gray-600 dark:text-yellow-200">Current Supply: <span className="font-bold">{tokenDetails.currentSupply} {tokenDetails.tokenSymbol}</span></p>
+                      <div className="space-y-1">
+                        <p className="text-sm text-gray-600 dark:text-yellow-200">
+                          Max Mintable Amount: 
+                          <span 
+                            className="font-bold cursor-help" 
+                            title={`${tokenDetails.maxMintableAmount} ${tokenDetails.tokenSymbol}`}
+                          >
+                            {formatNumber(tokenDetails.maxMintableAmount)} {tokenDetails.tokenSymbol}
+                          </span>
+                        </p>
+                      </div>
+                      <p className="text-sm text-gray-600 dark:text-yellow-200">
+                        Current Supply: 
+                        <span 
+                          className="font-bold cursor-help" 
+                          title={`${tokenDetails.currentSupply} ${tokenDetails.tokenSymbol}`}
+                        >
+                          {formatNumber(tokenDetails.currentSupply)} {tokenDetails.tokenSymbol}
+                        </span>
+                      </p>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="mintAmount" className="text-sm font-bold text-gray-600 dark:text-yellow-200">Amount to Mint</Label>
-                      <Input
-                        id="mintAmount"
-                        type="number"
-                        placeholder="Enter amount"
-                        value={mintAmount}
-                        onChange={(e) => setMintAmount(e.target.value)}
-                        className="h-10 text-sm bg-white/60 dark:bg-[#2a1a00] border-2 border-gray-200 dark:border-yellow-400/20 text-gray-600 dark:text-yellow-200"
-                      />
+                      <div className="flex gap-2">
+                        <Input
+                          id="mintAmount"
+                          type="number"
+                          placeholder="Enter amount"
+                          value={mintAmount}
+                          onChange={(e) => setMintAmount(e.target.value)}
+                          className="h-10 text-sm bg-white/60 dark:bg-[#2a1a00] border-2 border-gray-200 dark:border-yellow-400/20 text-gray-600 dark:text-yellow-200"
+                        />
+                        <Button
+                          type="button"
+                          onClick={() => {
+                            // Set max mintable amount (fees will be deducted from this amount)
+                            const safeMaxAmount = Math.max(0, tokenDetails.maxMintableAmount - 0.000001);
+                            setMintAmount(safeMaxAmount.toFixed(6));
+                          }}
+                          disabled={tokenDetails.maxMintableAmount === 0}
+                          className="h-10 px-3 text-sm bg-gray-500 dark:bg-gray-600 hover:bg-gray-600 dark:hover:bg-gray-700 text-white rounded-xl whitespace-nowrap"
+                        >
+                          Max
+                        </Button>
+                      </div>
+                      {mintAmount && !isNaN(Number(mintAmount)) && Number(mintAmount) > 0 && (
+                        <div className="mt-2 p-2 rounded-lg bg-blue-50 dark:bg-yellow-400/10 border border-blue-200 dark:border-yellow-400/20">
+                          <p className="text-xs text-blue-600 dark:text-yellow-200">
+                            You will receive: 
+                            <span 
+                              className="font-bold cursor-help" 
+                              title={`${userAmountAfterFees} ${tokenDetails.tokenSymbol}`}
+                            >
+                              {formatNumber(userAmountAfterFees)} {tokenDetails.tokenSymbol}
+                            </span>
+                            <br />
+                            Clowder fee: 
+                            <span 
+                              className="font-bold cursor-help" 
+                              title={`${Number(mintAmount) - userAmountAfterFees} ${tokenDetails.tokenSymbol}`}
+                            >
+                              {formatNumber(Number(mintAmount) - userAmountAfterFees)} {tokenDetails.tokenSymbol}
+                            </span>
+                          </p>
+                        </div>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="mintTo" className="text-sm font-bold text-gray-600 dark:text-yellow-200">Mint To Address</Label>
@@ -865,10 +1055,12 @@ export default function InteractionClient() {
                   <div className="mt-6">
                     <Button
                       onClick={handleMint}
-                      disabled={!mintAmount || !mintToAddress || isMinting || isSigning}
-                      className="w-full h-10 text-sm bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl"
+                      disabled={!mintAmount || !mintToAddress || isMinting || isSigning || (!isUserMinter && !isUserAdmin)}
+                      className="w-full h-10 text-sm bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {isMinting || isSigning ? (
+                      {!isUserMinter && !isUserAdmin ? (
+                        "Minter Role Required"
+                      ) : isMinting || isSigning ? (
                         <ButtonLoadingState text={isSigning ? "Waiting for signature..." : "Processing..."} />
                       ) : (
                         "Mint Tokens"
@@ -877,11 +1069,20 @@ export default function InteractionClient() {
                   </div>
                 </div>
 
-                <div className="group relative rounded-2xl p-6 shadow-2xl bg-white/60 dark:bg-[#1a1400]/70 border border-white/30 dark:border-yellow-400/20 backdrop-blur-lg transition-all duration-300 hover:scale-105 hover:shadow-[0_8px_32px_0_rgba(90,180,255,0.25)] dark:hover:shadow-[0_8px_32px_0_rgba(255,217,0,0.25)] hover:border-blue-400 dark:hover:border-yellow-400">
+                <div className={`group relative rounded-2xl p-6 shadow-2xl bg-white/60 dark:bg-[#1a1400]/70 border border-white/30 dark:border-yellow-400/20 backdrop-blur-lg transition-all duration-300 hover:scale-105 hover:shadow-[0_8px_32px_0_rgba(90,180,255,0.25)] dark:hover:shadow-[0_8px_32px_0_rgba(255,217,0,0.25)] hover:border-blue-400 dark:hover:border-yellow-400 ${!isUserAdmin ? 'opacity-75' : ''}`}>
                   <div className="flex items-center gap-2 mb-4">
                     <Settings className="h-5 w-5 text-gray-500 dark:text-[#FFD600]" />
                     <h3 className="text-lg font-semibold text-blue-400 dark:text-yellow-200">Minter Role Management</h3>
                   </div>
+                  
+                  {!isUserAdmin && (
+                    <div className="mb-4 p-3 rounded-lg bg-yellow-50 dark:bg-yellow-400/10 border border-yellow-200 dark:border-yellow-400/20">
+                      <p className="text-sm text-yellow-700 dark:text-yellow-200 font-medium">
+                        ⚠️ Only administrators can grant or revoke minter roles
+                      </p>
+                    </div>
+                  )}
+                  
                   <div className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="minterAddress" className="text-sm font-bold text-gray-600 dark:text-yellow-200">Minter Address</Label>
@@ -891,23 +1092,24 @@ export default function InteractionClient() {
                         placeholder="Enter minter address"
                         value={minterAddress}
                         onChange={(e) => setMinterAddress(e.target.value)}
-                        className="h-10 text-sm bg-white/60 dark:bg-[#2a1a00] border-2 border-gray-200 dark:border-yellow-400/20 text-gray-600 dark:text-yellow-200"
+                        disabled={!isUserAdmin}
+                        className="h-10 text-sm bg-white/60 dark:bg-[#2a1a00] border-2 border-gray-200 dark:border-yellow-400/20 text-gray-600 dark:text-yellow-200 disabled:opacity-50 disabled:cursor-not-allowed"
                       />
                     </div>
                     <div className="flex gap-2">
                       <Button
                         onClick={handleGrantMinterRole}
-                        disabled={!minterAddress || isGrantingMinterRole || isSigning}
-                        className="flex-1 h-10 text-sm bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl"
+                        disabled={!isUserAdmin || !minterAddress || isGrantingMinterRole || isSigning}
+                        className="flex-1 h-10 text-sm bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        Grant Minter Role
+                        {!isUserAdmin ? "Admin Only" : "Grant Minter Role"}
                       </Button>
                       <Button
                         onClick={handleRevokeMinterRole}
-                        disabled={!minterAddress || isRevokingMinterRole || isSigning}
-                        className="flex-1 h-10 text-sm bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl"
+                        disabled={!isUserAdmin || !minterAddress || isRevokingMinterRole || isSigning}
+                        className="flex-1 h-10 text-sm bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        Revoke Minter Role
+                        {!isUserAdmin ? "Admin Only" : "Revoke Minter Role"}
                       </Button>
                     </div>
                   </div>
