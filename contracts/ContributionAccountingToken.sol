@@ -27,8 +27,7 @@ contract ContributionAccountingToken is ERC20Burnable, ERC20Permit, AccessContro
     string public tokenName; // Token name
     string public tokenSymbol; // Token symbol
 
-    // Constant denominator for fee calculations
-    uint256 constant denominator = 100000;
+    uint256 constant denominator = 100000;  // Constant denominator for fee calculations
 
     constructor(
         address defaultAdmin,
@@ -74,7 +73,6 @@ contract ContributionAccountingToken is ERC20Burnable, ERC20Permit, AccessContro
         
         (uint256 userAmount, uint256 feeAmount) = userAmountAfterFees(amount);
         
-        // Perform the actual minting: fees are deducted from the amount
         _mint(to, userAmount);
         _mint(clowderTreasury, feeAmount);
         lastMintTimestamp = block.timestamp;
@@ -110,7 +108,6 @@ contract ContributionAccountingToken is ERC20Burnable, ERC20Permit, AccessContro
         _grantRole(MINTER_ROLE, account);
         ICATFactory(factory).onMinterRoleGranted(account);
     }
-
     function revokeMinterRole(address account) public onlyRole(DEFAULT_ADMIN_ROLE) {
         revokeRole(MINTER_ROLE, account);
     }

@@ -7,9 +7,8 @@ import "./ContributionAccountingToken.sol";
 contract CATFactory is Ownable {
     uint256 private _nextTokenId;
 
-    // Mapping from owner address to token addresses
-    mapping(address => address[]) public administerableTokens;  
-    mapping(address => address[]) public mintableTokens;
+    mapping(address => address[]) public creatorTokens;  // Mapping from owner address to token addresses
+    mapping(address => address[]) public minterTokens;
     
     mapping(address => mapping(address => bool)) public isMinterForCAT; 
 
@@ -44,7 +43,7 @@ contract CATFactory is Ownable {
         );
 
         address catAddress = address(newCAT);
-        administerableTokens[msg.sender].push(catAddress);
+        creatorTokens[msg.sender].push(catAddress);
         emit CATCreated(msg.sender, catAddress, _nextTokenId);
         _nextTokenId++;
 
@@ -54,25 +53,17 @@ contract CATFactory is Ownable {
     /**
      * @dev Notifies the factory that a minter role has been granted in a CAT contract.
      * This function is called by CAT contracts when their admins grant minter roles.
-     * @param minter The address that was granted the minter role.
      */
     function onMinterRoleGranted(address minter) external {    
-        if (isMinterForCAT[minter][msg.sender]) {
-            return; 
+        if (!isMinterForCAT[minter][msg.sender]) {
+            isMinterForCAT[minter][msg.sender] = true;
+            minterTokens[minter].push(msg.sender); 
         }
-        isMinterForCAT[minter][msg.sender] = true;
-        mintableTokens[minter].push(msg.sender);
-    }
-
-    function totalCATs() public view returns (uint256) {
-        return _nextTokenId;
     }
 
     /**
      * @dev Internal function to get a subarray from any address array with pagination.
-     * @param tokens The storage reference to the array of token addresses.
-     * @param start The starting index for pagination.
-     * @param end The ending index for pagination.
+     * @param tokens The storage reference to the array of token addresses. start and end are the indexes of the subarray.
      * @return An array of addresses for the specified range.
      */
     function _getSubArray(address[] storage tokens, uint256 start, uint256 end) internal view returns (address[] memory) {
@@ -85,27 +76,21 @@ contract CATFactory is Ownable {
         
         uint256 resultLength = end - start;
         address[] memory result = new address[](resultLength);
-        
+
         for (uint256 i = 0; i < resultLength; i++) {
             result[i] = tokens[start + i];
-        }
-        
+        }        
         return result;
     }
 
     function getCreatorCATAddresses(address _creator, uint256 start, uint256 end) external view returns (address[] memory) {
-        return _getSubArray(administerableTokens[_creator], start, end);
+        return _getSubArray(creatorTokens[_creator], start, end);
     }
-
     function getMinterCATAddresses(address _minter, uint256 start, uint256 end) external view returns (address[] memory) {
-        return _getSubArray(mintableTokens[_minter], start, end);
+        return _getSubArray(minterTokens[_minter], start, end);
     }
 
-    function getCreatorCATCount(address _creator) external view returns (uint256) {
-        return administerableTokens[_creator].length;
-    }
-    function getMinterCATCount(address _minter) external view returns (uint256) {
-        return mintableTokens[_minter].length;
-    }
-
+    function totalCATs() public view returns (uint256) { return _nextTokenId; }
+    function getCreatorCATCount(address _creator) external view returns (uint256) { return creatorTokens[_creator].length; }
+    function getMinterCATCount(address _minter) external view returns (uint256) { return minterTokens[_minter].length; }
 }
