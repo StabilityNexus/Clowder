@@ -8,7 +8,6 @@ import logo_dark from "../images/logo_dark.png";
 import { useTheme } from "next-themes";
 import { ModeToggle } from "../components/darkModeToggle";
 import Avatar from "./Avatar";
-// import { useWallet } from "@/hooks/WalletConnectProvider";
 import { Menu, X } from "lucide-react";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { useAccount } from "wagmi";
@@ -42,7 +41,7 @@ const Navbar = () => {
                 priority
               />
               <h1
-                className="text-4xl font-bold ml-[-10px] pb-2 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-blue-500 dark:from-[#FFD600] dark:to-blue-400"
+                className="text-4xl font-bold ml-[-10px] pb-2 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-blue-500 dark:from-[#FFD600] dark:to-yellow-100"
                 style={{
                   fontFamily: "var(--font-bebas-nueue)",
                   marginLeft: "-58px",

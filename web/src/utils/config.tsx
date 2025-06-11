@@ -23,5 +23,5 @@ export const config = getDefaultConfig({
     milkomeda,
     base,
   ] as const,
-  ssr: false, // Disable SSR for static export
+  ssr: true, // Disable SSR for static export
 });

@@ -9,7 +9,7 @@ import { ConnectButton } from "@rainbow-me/rainbowkit";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import { ClowderVaultFactories } from "@/utils/address";
-import { useAccount } from "wagmi";
+import { useAccount, useChainId } from "wagmi";
 import { config } from "@/utils/config";
 import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { CAT_FACTORY_ABI } from "@/contractsABI/CatFactoryABI";
@@ -20,6 +20,25 @@ import Link from "next/link";
 import { LoadingState } from "@/components/ui/loading-state";
 import { ButtonLoadingState } from "@/components/ui/button-loading-state";
 import { getPublicClient } from "@wagmi/core";
+
+// Define supported chain IDs and names
+type SupportedChainId = 137 | 534351 | 5115 | 61 | 8453;
+
+const CHAIN_NAMES: Record<SupportedChainId, string> = {
+  137: "Polygon",
+  534351: "Scroll Sepolia",
+  5115: "Citrea Testnet", 
+  61: "Ethereum Classic",
+  8453: "Base Mainnet",
+};
+
+const CHAIN_COLORS: Record<SupportedChainId, string> = {
+  137: "bg-purple-500",
+  534351: "bg-orange-500",
+  5115: "bg-yellow-500",
+  61: "bg-green-500", 
+  8453: "bg-blue-500",
+};
 
 interface DeployContractProps {
   tokenName: string;
@@ -44,8 +63,8 @@ const fields = [
     placeholder: "My Token",
     description: "The name of your token",
     validate: (value: string) => ({
-      isValid: value.length >= 3 && value.length <= 32,
-      errorMessage: "Token name must be between 3 and 32 characters"
+      isValid: value.length >= 3,
+      errorMessage: "Token name must be more than 3 characters"
     })
   },
   {
@@ -53,10 +72,10 @@ const fields = [
     label: "Token Symbol",
     type: "text",
     placeholder: "TKN",
-    description: "A short identifier for your token (2-4 characters)",
+    description: "A short identifier for your token.",
     validate: (value: string) => ({
-      isValid: /^[A-Z]{2,4}$/.test(value),
-      errorMessage: "Symbol must be 2-4 uppercase letters"
+      isValid: /^[A-Z]{2,}$/.test(value),
+      errorMessage: "Symbol must be uppercase letters"
     })
   },
   {
@@ -64,7 +83,7 @@ const fields = [
     label: "Maximum Supply",
     type: "number",
     placeholder: "1000000",
-    description: "The maximum number of tokens that can exist",
+    description: "The maximum number of tokens that can ever exist",
     validate: (value: string) => ({
       isValid: /^\d+$/.test(value) && parseInt(value) > 0,
       errorMessage: "Maximum supply must be a positive number"
@@ -75,7 +94,7 @@ const fields = [
     label: "Threshold Supply",
     type: "number",
     placeholder: "500000",
-    description: "The supply threshold that triggers expansion",
+    description: "The supply threshold above which further supply expansion is restricted by the maximum expansion rate.",
     validate: (value: string, formData: DeployContractProps) => ({
       isValid: /^\d+$/.test(value) && 
                parseInt(value) > 0 && 
@@ -88,7 +107,7 @@ const fields = [
     label: "Maximum Expansion Rate",
     type: "number",
     placeholder: "5",
-    description: "Maximum percentage the supply can expand (1-100)",
+    description: "Maximum supply expansion rate per year, for expansions above the supply threshold.",
     validate: (value: string) => ({
       isValid: /^\d+$/.test(value) && 
                parseInt(value) >= 1 && 
@@ -112,6 +131,7 @@ export default function CreateCAT() {
   const [isSigning, setIsSigning] = useState(false);
 
   const { address } = useAccount();
+  const currentChainId = useChainId();
   const router = useRouter();
 
   const { writeContract: deployCAT, data: deployData } = useWriteContract();
@@ -290,16 +310,40 @@ export default function CreateCAT() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7 }}
             >
-              <Link href="/my-cats">
-                <motion.button
-                  className="flex items-center space-x-2 text-gray-700 hover:text-blue-600 dark:text-yellow-300 dark:hover:text-yellow-400 mb-8 font-semibold"
-                  whileHover={{ x: -5 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <ArrowLeft className="w-5 h-5" />
-                  <span>Back to My CATs</span>
-                </motion.button>
-              </Link>
+              <div className="flex justify-between items-center mb-8">
+                <Link href="/my-cats">
+                  <motion.button
+                    className="flex items-center space-x-2 text-gray-700 hover:text-blue-600 dark:text-yellow-300 dark:hover:text-yellow-400 font-semibold"
+                    whileHover={{ x: -5 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <ArrowLeft className="w-5 h-5" />
+                    <span>Back to My CATs</span>
+                  </motion.button>
+                </Link>
+                
+                {/* Connected Network Display */}
+                {currentChainId && CHAIN_NAMES[currentChainId as SupportedChainId] && (
+                  <motion.div
+                    className="flex items-center space-x-3 px-4 py-2.5 rounded-xl bg-gradient-to-r from-white/80 to-white/60 dark:from-[#2a1a00]/80 dark:to-[#2a1a00]/60 border border-blue-200/50 dark:border-yellow-400/30 shadow-sm backdrop-blur-sm"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.5, delay: 0.2 }}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <div className={`w-2.5 h-2.5 rounded-full ${CHAIN_COLORS[currentChainId as SupportedChainId]} shadow-sm`}></div>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-xs text-gray-500 dark:text-yellow-300/70 font-medium">
+                        Currently On:
+                      </span>
+                      <span className="text-sm font-semibold text-gray-700 dark:text-yellow-200">
+                        {CHAIN_NAMES[currentChainId as SupportedChainId]}
+                      </span>
+                    </div>
+                  </motion.div>
+                )}
+              </div>
               <h1 className="text-4xl md:text-5xl font-extrabold text-center mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-blue-200 dark:from-[#FFD600] dark:to-white drop-shadow-lg">
                 Create CAT
               </h1>
@@ -334,9 +378,16 @@ export default function CreateCAT() {
                             validation[field.id]?.isValid === false
                               ? 'border-red-500 dark:border-red-400'
                               : 'border-blue-200 dark:border-yellow-700'
-                          } text-gray-800 dark:text-yellow-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-yellow-400 rounded-xl transition-all`}
+                          } text-gray-800 dark:text-yellow-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-yellow-400 rounded-xl transition-all ${
+                            field.id === 'maxExpansionRate' ? 'pr-16' : ''
+                          }`}
                           required
                         />
+                        {field.id === 'maxExpansionRate' && (
+                          <span className="absolute right-10 top-1/2 -translate-y-1/2 text-lg font-medium text-gray-600 dark:text-yellow-300 pointer-events-none">
+                            %
+                          </span>
+                        )}
                         <button
                           type="button"
                           onClick={() => toggleInfo(field.id)}

@@ -68,8 +68,8 @@ export default function RootLayout({
           <WalletProvider>
             <ThemeProvider
               attribute="class"
-              defaultTheme="dark"
-              enableSystem
+              defaultTheme="light"
+              enableSystem={false}
               disableTransitionOnChange
             >
               {children}

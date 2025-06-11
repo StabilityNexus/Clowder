@@ -1,8 +1,6 @@
 import "@rainbow-me/rainbowkit/styles.css";
-// import "./globals.css";
 import { Metadata } from "next";
 import { ThemeProvider } from "../hooks/ThemeProvider";
-// import MetamaskProvider from '@/providers'
 import Navbar from "./Navbar";
 import Footer from "@/components/Footer";
 import { WalletProvider } from "../hooks/WalletProvider";
