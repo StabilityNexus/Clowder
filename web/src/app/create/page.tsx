@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -144,11 +144,11 @@ export default function CreateCAT() {
     return history ? JSON.parse(history) : [];
   };
 
-  const saveTransaction = (txDetails: object) => {
+  const saveTransaction = useCallback((txDetails: object) => {
     const history = getTransactionHistory();
     history.push(txDetails);
     localStorage.setItem("transactionHistory", JSON.stringify(history));
-  };
+  }, []);
 
   const deployContract = async () => {
     try {
