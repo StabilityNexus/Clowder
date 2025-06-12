@@ -207,59 +207,378 @@ export default function Home() {
           </motion.div>
         </motion.section>
 
-        {/* Services Section */}
+        {/* How it Works Section */}
         <motion.section
-          className="py-24 text-center relative"
+          className="py-24 relative overflow-hidden"
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           transition={{ duration: 0.8 }}
           viewport={{ once: true }}
         >
-          <div className="max-w-7xl mx-auto px-4">
-            <h2
-              className="text-4xl md:text-6xl font-extrabold mb-16 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-blue-200 dark:from-[#FFD600] dark:to-blue-400 drop-shadow-lg"
+          
+          <div className="max-w-7xl mx-auto px-4 relative z-10">
+            <motion.div
+              className="text-center mb-20"
+              initial={{ y: 30, opacity: 0 }}
+              whileInView={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+              viewport={{ once: true }}
             >
-              Why CATs?
-            </h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-12">
-              {services.map((service, index) => (
-                <motion.div
-                  key={index}
-                  className={`
-                    group relative rounded-2xl p-8 
-                    bg-white/40 dark:bg-[#1a1400]/70
-                    border border-white/30 dark:border-yellow-400/20
-                    backdrop-blur-lg
-                    transition-all duration-300
-                    hover:scale-105
-                    hover:shadow-[0_8px_32px_0_rgba(90,180,255,0.25)]
-                    dark:hover:shadow-[0_8px_32px_0_rgba(255,217,0,0.25)]
-                    hover:border-blue-400 dark:hover:border-yellow-400
-                    before:absolute before:inset-0 before:rounded-2xl
-                    before:bg-gradient-to-br before:from-blue-200/30 before:to-transparent
-                    dark:before:from-yellow-400/20 dark:before:to-transparent
-                    before:opacity-0 group-hover:before:opacity-100 before:transition-opacity before:duration-300
-                  `}
-                  initial={{ y: 20, opacity: 0 }}
-                  whileInView={{ y: 0, opacity: 1 }}
-                  transition={{ duration: 0.5, delay: index * 0.2 }}
+              <motion.h2 
+                className="text-5xl font-bold mb-6 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-blue-200 dark:from-[#FFD600] dark:to-white drop-shadow-sm"
+                initial={{ scale: 0.9 }}
+                whileInView={{ scale: 1 }}
+                transition={{ duration: 0.6, delay: 0.2 }}
+                viewport={{ once: true }}
+              >
+                How CATs Work
+              </motion.h2>
+              <motion.div 
+                className="w-24 h-1.5 bg-gradient-to-r from-blue-600 to-blue-200 dark:from-[#FFD600] dark:to-white mx-auto mb-8 rounded-full shadow-lg"
+                initial={{ width: 0 }}
+                whileInView={{ width: 96 }}
+                transition={{ duration: 0.8, delay: 0.4 }}
+                viewport={{ once: true }}
+              ></motion.div>
+            </motion.div>
+
+            {/* Main Flow */}
+            <motion.div
+              className="mb-20"
+              initial={{ y: 30, opacity: 0 }}
+              whileInView={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
+              viewport={{ once: true }}
+            >
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 relative">
+                {/* Enhanced Flow arrows for desktop */}
+                <motion.div 
+                  className="hidden lg:block absolute top-1/2 left-1/3 w-12 h-0.5 bg-gradient-to-r from-blue-400 via-purple-400 to-blue-500 dark:from-yellow-400 dark:via-yellow-500 dark:to-yellow-600 transform -translate-y-1/2 shadow-sm"
+                  initial={{ scaleX: 0 }}
+                  whileInView={{ scaleX: 1 }}
+                  transition={{ duration: 0.6, delay: 1.2 }}
                   viewport={{ once: true }}
-                  whileHover={{ y: -8 }}
                 >
-                  <div className="relative z-10 flex flex-col items-center">
-                    <Image
-                      src={service.image || "/placeholder.svg"}
-                      alt={service.alt}
-                      width={250}
-                      height={150}
-                      className="rounded-xl mb-6 transform group-hover:scale-110 transition-transform duration-300"
-                    />
-                    <p className="text-2xl font-bold text-gray-900 dark:text-yellow-200 drop-shadow-sm">
-                      {service.description}
-                    </p>
-                  </div>
+                  <motion.div 
+                    className="absolute -right-2 -top-1.5 w-4 h-4 border-r-2 border-t-2 border-blue-500 dark:border-yellow-500 transform rotate-45"
+                    initial={{ opacity: 0, x: -10 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.4, delay: 1.8 }}
+                    viewport={{ once: true }}
+                  ></motion.div>
                 </motion.div>
-              ))}
+                <motion.div 
+                  className="hidden lg:block absolute top-1/2 left-2/3 w-12 h-0.5 bg-gradient-to-r from-blue-400 via-purple-400 to-blue-500 dark:from-yellow-400 dark:via-yellow-500 dark:to-yellow-600 transform -translate-y-1/2 shadow-sm"
+                  initial={{ scaleX: 0 }}
+                  whileInView={{ scaleX: 1 }}
+                  transition={{ duration: 0.6, delay: 1.4 }}
+                  viewport={{ once: true }}
+                >
+                  <motion.div 
+                    className="absolute -right-2 -top-1.5 w-4 h-4 border-r-2 border-t-2 border-blue-500 dark:border-yellow-500 transform rotate-45"
+                    initial={{ opacity: 0, x: -10 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.4, delay: 2.0 }}
+                    viewport={{ once: true }}
+                  ></motion.div>
+                </motion.div>
+
+                {[
+                  {
+                    step: "01",
+                    title: "Launch Your CAT",
+                    description: "Customize supply limits and growth parameters.",
+                    detail: "Define the maximum token supply, set thresholds, and manage controlled expansion to ensure token stability and value.",
+                    icon: "🎯",
+                    gradient: "from-blue-500 to-blue-600 dark:from-yellow-400 dark:to-yellow-500"
+                  },
+                  {
+                    step: "02",
+                    title: "Reward Contributions",
+                    description: "Easily mint tokens for meaningful efforts.",
+                    detail: "Fairly recognize contributions, ensuring transparent, on-chain tracking and rewarding of each participants impact.",
+                    icon: "⚡",
+                    gradient: "from-purple-500 to-purple-600 dark:from-yellow-500 dark:to-yellow-600"
+                  },
+                  {
+                    step: "03",
+                    title: "Sustain Token Value",
+                    description: "Automated inflation controls maintain worth.",
+                    detail: "Intelligently limit supply expansion, preserving long-term value and safeguarding your CATs integrity as your community grows.",
+                    icon: "🛡️",
+                    gradient: "from-indigo-500 to-indigo-600 dark:from-yellow-600 dark:to-yellow-700"
+                  }
+                ].map((step, index) => (
+                  <motion.div
+                    key={index}
+                    className="relative group"
+                    initial={{ y: 40, opacity: 0, scale: 0.95 }}
+                    whileInView={{ y: 0, opacity: 1, scale: 1 }}
+                    transition={{ 
+                      duration: 0.7, 
+                      delay: 0.2 * index,
+                      ease: "easeOut",
+                      type: "spring",
+                      stiffness: 100
+                    }}
+                    viewport={{ once: true }}
+                    whileHover={{ 
+                      y: -8, 
+                      scale: 1.03,
+                      transition: { duration: 0.3, ease: "easeOut" }
+                    }}
+                  >
+                    <div className="relative bg-white/90 dark:bg-[#1a1400]/95 backdrop-blur-md p-8 rounded-3xl border border-white/60 dark:border-yellow-400/30 shadow-xl hover:shadow-2xl transition-all duration-500 overflow-hidden h-full min-h-[300px] flex flex-col group-hover:border-blue-400/50 dark:group-hover:border-yellow-400/50">
+                      {/* Creative glow effect on hover */}
+                      <div className="absolute -inset-1 bg-gradient-to-r from-blue-400/20 via-purple-400/20 to-blue-400/20 dark:from-yellow-400/20 dark:via-yellow-500/20 dark:to-yellow-400/20 rounded-3xl blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-500 -z-10"></div>
+                      
+                      {/* Subtle inner glow */}
+                      <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-transparent dark:from-yellow-400/5 dark:via-transparent dark:to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-3xl pointer-events-none"></div>
+                      
+                      {/* Content */}
+                      <div className="relative z-10 flex flex-col h-full">
+                        <div className="flex items-center mb-6 flex-shrink-0">
+                          <motion.div 
+                            className={`w-14 h-14 rounded-2xl bg-gradient-to-r ${step.gradient} flex items-center justify-center text-white dark:text-black font-bold text-xl mr-4 shadow-lg group-hover:shadow-xl transition-shadow duration-300`}
+                            whileHover={{ rotate: 5, scale: 1.1 }}
+                            transition={{ duration: 0.3 }}
+                          >
+                            {step.step}
+                          </motion.div>
+                          <motion.div 
+                            className="text-5xl filter group-hover:drop-shadow-lg transition-all duration-300"
+                            whileHover={{ scale: 1.2, rotate: 10 }}
+                            transition={{ duration: 0.3 }}
+                          >
+                            {step.icon}
+                          </motion.div>
+                        </div>
+                        
+                        <div className="flex-grow flex flex-col justify-between">
+                          <div>
+                            <h3 className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-yellow-200 mb-3 group-hover:text-blue-600 dark:group-hover:text-yellow-300 transition-colors duration-300 leading-tight group-hover:drop-shadow-sm">
+                              {step.title}
+                            </h3>
+                            <p className="text-sm lg:text-base text-gray-600 dark:text-gray-300 font-medium leading-relaxed group-hover:text-gray-700 dark:group-hover:text-gray-200 transition-colors duration-300">
+                              {step.description}
+                            </p>
+                          </div>
+                          <p className="text-xs lg:text-sm text-gray-500 dark:text-gray-400 leading-relaxed mt-auto group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors duration-300">
+                            {step.detail}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {/* Enhanced bottom accent with animated gradient */}
+                      <div className={`absolute bottom-0 left-0 w-full h-1.5 bg-gradient-to-r ${step.gradient} transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 rounded-b-3xl`}></div>
+                      <div className={`absolute bottom-0 left-0 w-full h-1.5 bg-gradient-to-r ${step.gradient} opacity-50 blur-sm transform scale-x-0 group-hover:scale-x-100 transition-transform duration-700 delay-100 rounded-b-3xl`}></div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+            
+            {/* Perfect Use Cases */}
+            <motion.div
+              className="text-center"
+              initial={{ y: 30, opacity: 0 }}
+              whileInView={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.8, delay: 0.6, ease: "easeOut" }}
+              viewport={{ once: true }}
+            >
+                             <motion.h3 
+                 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-blue-200 dark:from-[#FFD600] dark:to-white mb-4 drop-shadow-lg"
+                 initial={{ scale: 0.9 }}
+                 whileInView={{ scale: 1 }}
+                 transition={{ duration: 0.6, delay: 0.8 }}
+                 viewport={{ once: true }}
+               >
+                 Perfect Use Cases
+               </motion.h3>
+              <motion.p 
+                className="text-gray-600 dark:text-gray-300 mb-12 max-w-3xl mx-auto text-lg font-medium leading-relaxed"
+                initial={{ y: 20, opacity: 0 }}
+                whileInView={{ y: 0, opacity: 1 }}
+                transition={{ duration: 0.6, delay: 1.0 }}
+                viewport={{ once: true }}
+              >
+                Where CATs shine brightest - turning collaboration into ownership
+              </motion.p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                {[
+                    {
+                      title: "Open Source Projects",
+                      emoji: "💻",
+                      explanation: "Reward developers for coding, bug fixing, documentation, and improving the projects impact.",
+                      gradient: "from-green-400 to-blue-500"
+                    },
+                    {
+                      title: "Creative Collaboratives",
+                      emoji: "🎨",
+                      explanation: "Artists, musicians, and content creators can fairly share ownership according to their creative input and effort.",
+                      gradient: "from-pink-400 to-purple-500"
+                    },
+                    {
+                      title: "Event Management",
+                      emoji: "🎫",
+                      explanation: "Recognize and reward event organizers, volunteers, and promoters for making events successful and engaging.",
+                      gradient: "from-cyan-400 to-sky-500"
+                    },
+                    {
+                      title: "Community DAOs",
+                      emoji: "🤝",
+                      explanation: "Give community members fair governance rights and influence based on their active participation and contributions.",
+                      gradient: "from-teal-400 to-emerald-500"
+                    }
+                  ].map((useCase, index) => (
+                  <motion.div
+                    key={index}
+                    className="group relative overflow-hidden bg-white/90 dark:bg-[#1a1400]/95 p-8 rounded-3xl border border-gray-200/60 dark:border-yellow-400/30 hover:shadow-2xl transition-all duration-500 backdrop-blur-md"
+                    initial={{ y: 40, opacity: 0, scale: 0.9 }}
+                    whileInView={{ y: 0, opacity: 1, scale: 1 }}
+                    transition={{ 
+                      duration: 0.6, 
+                      delay: 0.15 * index,
+                      ease: "easeOut",
+                      type: "spring",
+                      stiffness: 120
+                    }}
+                    viewport={{ once: true }}
+                    whileHover={{ 
+                      y: -12, 
+                      scale: 1.05,
+                      transition: { duration: 0.4, ease: "easeOut" }
+                    }}
+                  >
+                    {/* Enhanced gradient overlay */}
+                    <div className={`absolute inset-0 bg-gradient-to-br ${useCase.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-500 rounded-3xl`}></div>
+                    
+                    {/* Floating background elements */}
+                    <div className="absolute top-4 right-4 w-16 h-16 bg-gradient-to-br from-white/20 to-transparent rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                    
+                    <div className="relative z-10">
+                      <motion.div 
+                        className="text-6xl mb-6 filter drop-shadow-lg"
+                        whileHover={{ 
+                          scale: 1.2, 
+                          rotate: [0, -5, 5, 0],
+                          transition: { duration: 0.5 }
+                        }}
+                      >
+                        {useCase.emoji}
+                      </motion.div>
+                      <h4 className="font-bold text-gray-900 dark:text-yellow-200 text-xl mb-4 group-hover:text-blue-600 dark:group-hover:text-yellow-300 transition-colors duration-300">
+                        {useCase.title}
+                      </h4>
+                      <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed font-medium">
+                        {useCase.explanation}
+                      </p>
+                    </div>
+                    
+                    {/* Enhanced bottom accent with pulse effect */}
+                    <div className={`absolute bottom-0 left-0 w-full h-1.5 bg-gradient-to-r ${useCase.gradient} transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 rounded-b-3xl`}></div>
+                    <div className={`absolute bottom-0 left-0 w-full h-1.5 bg-gradient-to-r ${useCase.gradient} opacity-50 animate-pulse transform scale-x-0 group-hover:scale-x-100 transition-transform duration-700 delay-200 rounded-b-3xl`}></div>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          </div>
+        </motion.section>
+
+        {/* Services Section */}
+        <motion.section
+          className="py-24 text-center relative overflow-hidden"
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          transition={{ duration: 0.8 }}
+          viewport={{ once: true }}
+        >
+          {/* Background decorative elements */}
+          <div className="absolute inset-0 overflow-hidden">
+            <div className="absolute top-10 left-20 w-24 h-24 bg-blue-300/10 dark:bg-yellow-400/5 rounded-full blur-2xl animate-pulse"></div>
+            <div className="absolute bottom-10 right-20 w-32 h-32 bg-purple-300/10 dark:bg-yellow-500/5 rounded-full blur-2xl animate-pulse animation-delay-2000"></div>
+          </div>
+          
+          <div className="max-w-7xl mx-auto px-4 relative z-10">
+                         <motion.h2
+               className="text-4xl md:text-6xl font-extrabold mb-16 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-blue-200 dark:from-[#FFD600] dark:to-white drop-shadow-lg"
+               initial={{ scale: 0.9, y: 20 }}
+               whileInView={{ scale: 1, y: 0 }}
+               transition={{ duration: 0.8, ease: "easeOut" }}
+               viewport={{ once: true }}
+             >
+               Why CATs?
+             </motion.h2>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-12">
+                {services.map((service, index) => (
+                  <motion.div
+                    key={index}
+                    className={`
+                      group relative rounded-3xl p-10 
+                      bg-white/60 dark:bg-[#1a1400]/80
+                      border border-white/40 dark:border-yellow-400/30
+                      backdrop-blur-xl
+                      transition-all duration-500
+                      hover:scale-110
+                      hover:shadow-[0_20px_60px_0_rgba(90,180,255,0.3)]
+                      dark:hover:shadow-[0_20px_60px_0_rgba(255,217,0,0.3)]
+                      hover:border-blue-400 dark:hover:border-yellow-400
+                      before:absolute before:inset-0 before:rounded-3xl
+                      before:bg-gradient-to-br before:from-blue-200/40 before:to-purple-200/20
+                      dark:before:from-yellow-400/25 dark:before:to-yellow-500/10
+                      before:opacity-0 group-hover:before:opacity-100 before:transition-opacity before:duration-500
+                      overflow-hidden
+                    `}
+                    initial={{ y: 40, opacity: 0, scale: 0.9 }}
+                    whileInView={{ y: 0, opacity: 1, scale: 1 }}
+                    transition={{ 
+                      duration: 0.7, 
+                      delay: index * 0.2,
+                      ease: "easeOut",
+                      type: "spring",
+                      stiffness: 100
+                    }}
+                    viewport={{ once: true }}
+                    whileHover={{ 
+                      y: -16,
+                      transition: { duration: 0.4, ease: "easeOut" }
+                    }}
+                  >
+                    {/* Floating background elements */}
+                    <div className="absolute top-4 right-4 w-20 h-20 bg-gradient-to-br from-blue-200/20 to-purple-200/10 dark:from-yellow-400/15 dark:to-yellow-500/5 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                    <div className="absolute bottom-4 left-4 w-16 h-16 bg-gradient-to-br from-purple-200/15 to-blue-200/10 dark:from-yellow-500/10 dark:to-yellow-400/5 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 delay-200"></div>
+                    
+                    <div className="relative z-10 flex flex-col items-center">
+                      <motion.div
+                        whileHover={{ 
+                          scale: 1.15, 
+                          rotate: [0, -2, 2, 0],
+                          transition: { duration: 0.6 }
+                        }}
+                        className="mb-8"
+                      >
+                        <Image
+                          src={service.image || "/placeholder.svg"}
+                          alt={service.alt}
+                          width={280}
+                          height={170}
+                          className="rounded-2xl shadow-lg group-hover:shadow-2xl transition-shadow duration-500"
+                        />
+                      </motion.div>
+                      <motion.p 
+                        className="text-2xl font-bold text-gray-900 dark:text-yellow-200 drop-shadow-sm group-hover:text-blue-600 dark:group-hover:text-yellow-300 transition-colors duration-300 text-center"
+                        whileHover={{ scale: 1.05 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        {service.description}
+                      </motion.p>
+                    </div>
+                    
+                    {/* Bottom accent line */}
+                    <div className="absolute bottom-0 left-0 w-full h-1.5 bg-gradient-to-r from-blue-500 via-purple-500 to-blue-500 dark:from-yellow-400 dark:via-yellow-500 dark:to-yellow-400 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 rounded-b-3xl"></div>
+                  </motion.div>
+                ))}
             </div>
           </div>
         </motion.section>
@@ -274,7 +593,7 @@ export default function Home() {
         >
           <div className="max-w-7xl mx-auto px-4">
             <motion.h2
-              className="text-4xl md:text-6xl font-bold mb-16 text-center bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-blue-200 dark:from-[#FFD600] dark:to-blue-400"
+              className="text-4xl md:text-6xl font-bold mb-16 text-center bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-blue-200 dark:from-[#FFD600] dark:to-white drop-shadow-lg"
               initial={{ y: 20, opacity: 0 }}
               whileInView={{ y: 0, opacity: 1 }}
               transition={{ duration: 0.8 }}
