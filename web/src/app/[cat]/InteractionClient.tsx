@@ -107,12 +107,28 @@ export default function InteractionClient() {
   const calculateUserAmountAfterFees = useCallback(async (amount: string) => {
     if (!amount || !tokenAddress || !chainId || isNaN(Number(amount)) || Number(amount) <= 0) {
       setUserAmountAfterFees(0);
+      setIsCalculatingFees(false);
       return;
     }
 
+    // Validate that decimals is set and is a valid number
+    if (decimals === undefined || decimals === null || isNaN(decimals)) {
+      console.warn("Decimals not set yet, skipping fee calculation");
+      setIsCalculatingFees(false);
+      return;
+    }
+
+    setIsCalculatingFees(true);
+
     try {
       const publicClient = getPublicClient(config, { chainId });
-      if (!publicClient) return;
+      if (!publicClient) {
+        console.warn("No public client available, using fallback calculation");
+        const fallbackAmount = Number(amount) * 0.995;
+        setUserAmountAfterFees(isNaN(fallbackAmount) ? 0 : fallbackAmount);
+        setIsCalculatingFees(false);
+        return;
+      }
 
       const userAmount = await makeContractCallWithRetry(publicClient, {
         address: tokenAddress,
@@ -121,11 +137,23 @@ export default function InteractionClient() {
         args: [parseUnits(amount, decimals)],
       });
 
-      setUserAmountAfterFees(Number(formatUnits(userAmount as bigint, decimals)));
+      const calculatedAmount = Number(formatUnits(userAmount as bigint, decimals));
+      
+      // Validate the calculated amount
+      if (isNaN(calculatedAmount) || calculatedAmount < 0) {
+        console.warn("Invalid calculated amount, using fallback");
+        const fallbackAmount = Number(amount) * 0.995;
+        setUserAmountAfterFees(isNaN(fallbackAmount) ? 0 : fallbackAmount);
+      } else {
+        setUserAmountAfterFees(calculatedAmount);
+      }
     } catch (error) {
       console.error("Error calculating user amount after fees:", error);
       // Fallback calculation
-      setUserAmountAfterFees(Number(amount) * 0.995);
+      const fallbackAmount = Number(amount) * 0.995;
+      setUserAmountAfterFees(isNaN(fallbackAmount) ? 0 : fallbackAmount);
+    } finally {
+      setIsCalculatingFees(false);
     }
   }, [tokenAddress, chainId, decimals, makeContractCallWithRetry]);
 
@@ -147,6 +175,7 @@ export default function InteractionClient() {
   const [isUserAdmin, setIsUserAdmin] = useState<boolean>(false);
   const [isUserMinter, setIsUserMinter] = useState<boolean>(false);
   const [userAmountAfterFees, setUserAmountAfterFees] = useState<number>(0);
+  const [isCalculatingFees, setIsCalculatingFees] = useState<boolean>(false);
   const { writeContract: grantMinterRole, data: grantMinterRoleData } = useWriteContract();
   const { writeContract: revokeMinterRole, data: revokeMinterRoleData } = useWriteContract();
 
@@ -1005,14 +1034,14 @@ export default function InteractionClient() {
                           type="number"
                           placeholder="Enter amount"
                           value={mintAmount}
-                          onChange={(e) => setMintAmount(e.target.value)}
+                          onChange={(e) => setMintAmount(Math.min(Number(e.target.value), tokenDetails.maxMintableAmount).toString())}
                           className="h-10 text-sm bg-white/60 dark:bg-[#2a1a00] border-2 border-gray-200 dark:border-yellow-400/20 text-gray-600 dark:text-yellow-200"
                         />
                         <Button
                           type="button"
                           onClick={() => {
                             // Set max mintable amount (fees will be deducted from this amount)
-                            const safeMaxAmount = Math.max(0, tokenDetails.maxMintableAmount - 0.000001);
+                            const safeMaxAmount = Math.max(0, tokenDetails.maxMintableAmount);
                             setMintAmount(safeMaxAmount.toFixed(6));
                           }}
                           disabled={tokenDetails.maxMintableAmount === 0}
@@ -1027,17 +1056,29 @@ export default function InteractionClient() {
                             You will receive: 
                             <span 
                               className="font-bold cursor-help" 
-                              title={`${userAmountAfterFees} ${tokenDetails.tokenSymbol}`}
+                              title={`${userAmountAfterFees || 0} ${tokenDetails.tokenSymbol}`}
                             >
-                              {formatNumber(userAmountAfterFees)} {tokenDetails.tokenSymbol}
+                              {isCalculatingFees ? (
+                                "Calculating..."
+                              ) : !isNaN(userAmountAfterFees) && userAmountAfterFees !== null ? (
+                                formatNumber(userAmountAfterFees)
+                              ) : (
+                                "0"
+                              )} {tokenDetails.tokenSymbol}
                             </span>
                             <br />
                             Clowder fee: 
                             <span 
                               className="font-bold cursor-help" 
-                              title={`${Number(mintAmount) - userAmountAfterFees} ${tokenDetails.tokenSymbol}`}
+                              title={`${!isNaN(userAmountAfterFees) && userAmountAfterFees !== null ? Number(mintAmount) - userAmountAfterFees : 0} ${tokenDetails.tokenSymbol}`}
                             >
-                              {formatNumber(Number(mintAmount) - userAmountAfterFees)} {tokenDetails.tokenSymbol}
+                              {isCalculatingFees ? (
+                                "Calculating..."
+                              ) : !isNaN(userAmountAfterFees) && userAmountAfterFees !== null ? (
+                                formatNumber(Number(mintAmount) - userAmountAfterFees)
+                              ) : (
+                                "0"
+                              )} {tokenDetails.tokenSymbol}
                             </span>
                           </p>
                         </div>
