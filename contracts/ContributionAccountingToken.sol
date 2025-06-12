@@ -80,13 +80,13 @@ contract ContributionAccountingToken is ERC20Burnable, ERC20Permit, AccessContro
 
     function reduceMaxSupply(uint256 newMaxSupply) public onlyRole(DEFAULT_ADMIN_ROLE) {
         require(newMaxSupply < maxSupply, "New max supply must be less than current max supply");
-        require(newMaxSupply > totalSupply(), "New max supply must be greater than current total supply");
+        require(newMaxSupply >= totalSupply(), "New max supply must be greater than current total supply");
         maxSupply = newMaxSupply;
     }
 
     function reduceThresholdSupply(uint256 newThresholdSupply) public onlyRole(DEFAULT_ADMIN_ROLE) {
         require(newThresholdSupply < thresholdSupply, "New threshold supply must be less than current threshold supply");
-        require(newThresholdSupply > totalSupply(), "New threshold supply must be greater than current total supply");
+        require(newThresholdSupply >= totalSupply(), "New threshold supply must be greater than current total supply");
         thresholdSupply = newThresholdSupply;
     }
 
