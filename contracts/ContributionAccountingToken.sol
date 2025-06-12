@@ -12,6 +12,15 @@ interface ICATFactory {
 }
 
 contract ContributionAccountingToken is ERC20Burnable, ERC20Permit, AccessControl {
+    // Custom errors
+    error ExceedsMaxMintableAmount(uint256 requested, uint256 available);
+    error NewMaxSupplyNotLess(uint256 newMax, uint256 currentMax);
+    error NewMaxSupplyBelowTotal(uint256 newMax, uint256 total);
+    error NewThresholdNotLess(uint256 newThreshold, uint256 currentThreshold);
+    error NewThresholdBelowTotal(uint256 newThreshold, uint256 total);
+    error NewMaxExpansionNotLess(uint256 newExp, uint256 currentExp);
+    error TransferRestrictedError();
+
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
     bytes32 public constant ADMIN_ROLE = DEFAULT_ADMIN_ROLE;
     
@@ -40,7 +49,7 @@ contract ContributionAccountingToken is ERC20Burnable, ERC20Permit, AccessContro
     ) ERC20(_name, _symbol) ERC20Permit(_name) {
         _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
         _grantRole(MINTER_ROLE, defaultAdmin);
-        
+
         factory = _factory;
         maxSupply = _maxSupply;
         thresholdSupply = _thresholdSupply;
@@ -52,15 +61,13 @@ contract ContributionAccountingToken is ERC20Burnable, ERC20Permit, AccessContro
 
     function maxMintableAmount() public view returns (uint256) {
         uint256 currentSupply = totalSupply();
-        
         if (currentSupply < thresholdSupply) {
             return thresholdSupply - currentSupply;
         }
         uint256 elapsedTime = block.timestamp - lastMintTimestamp;
-        uint256 maxMintableAmount = (currentSupply * maxExpansionRate * elapsedTime) / (365 days * 100);
-        uint256 remainingSupply = maxSupply - currentSupply;
-        
-        return maxMintableAmount < remainingSupply ? maxMintableAmount : remainingSupply;
+        uint256 maxMint = (currentSupply * maxExpansionRate * elapsedTime) / (365 days * 100);
+        uint256 remaining = maxSupply - currentSupply;
+        return maxMint < remaining ? maxMint : remaining;
     }
 
     function userAmountAfterFees(uint256 amount) public pure returns (uint256 userAmount, uint256 feeAmount) {
@@ -69,29 +76,40 @@ contract ContributionAccountingToken is ERC20Burnable, ERC20Permit, AccessContro
     }
 
     function mint(address to, uint256 amount) public onlyRole(MINTER_ROLE) {
-        require(amount <= maxMintableAmount(), "Exceeds maximum mintable amount");
-        
+        uint256 available = maxMintableAmount();
+        if (amount > available) {
+            revert ExceedsMaxMintableAmount(amount, available);
+        }
         (uint256 userAmount, uint256 feeAmount) = userAmountAfterFees(amount);
-        
         _mint(to, userAmount);
         _mint(clowderTreasury, feeAmount);
         lastMintTimestamp = block.timestamp;
     }
 
     function reduceMaxSupply(uint256 newMaxSupply) public onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(newMaxSupply < maxSupply, "New max supply must be less than current max supply");
-        require(newMaxSupply >= totalSupply(), "New max supply must be greater than current total supply");
+        if (newMaxSupply >= maxSupply) {
+            revert NewMaxSupplyNotLess(newMaxSupply, maxSupply);
+        }
+        if (newMaxSupply < totalSupply()) {
+            revert NewMaxSupplyBelowTotal(newMaxSupply, totalSupply());
+        }
         maxSupply = newMaxSupply;
     }
 
     function reduceThresholdSupply(uint256 newThresholdSupply) public onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(newThresholdSupply < thresholdSupply, "New threshold supply must be less than current threshold supply");
-        require(newThresholdSupply >= totalSupply(), "New threshold supply must be greater than current total supply");
+        if (newThresholdSupply >= thresholdSupply) {
+            revert NewThresholdNotLess(newThresholdSupply, thresholdSupply);
+        }
+        if (newThresholdSupply < totalSupply()) {
+            revert NewThresholdBelowTotal(newThresholdSupply, totalSupply());
+        }
         thresholdSupply = newThresholdSupply;
     }
 
     function reduceMaxExpansionRate(uint256 newMaxExpansionRate) public onlyRole(DEFAULT_ADMIN_ROLE) {
-        require(newMaxExpansionRate < maxExpansionRate, "New max expansion rate must be less than current max expansion rate");
+        if (newMaxExpansionRate >= maxExpansionRate) {
+            revert NewMaxExpansionNotLess(newMaxExpansionRate, maxExpansionRate);
+        }
         maxExpansionRate = newMaxExpansionRate;
     }
 
@@ -100,8 +118,8 @@ contract ContributionAccountingToken is ERC20Burnable, ERC20Permit, AccessContro
     }
 
     function _update(address from, address to, uint256 amount) internal override {
-        if (transferRestricted) {
-            require(from == address(0) || to == address(0) || balanceOf(to) > 0, "Transfer restricted to existing token holders");
+        if (transferRestricted && from != address(0) && to != address(0) && balanceOf(to) == 0) {
+            revert TransferRestrictedError();
         }
         super._update(from, to, amount);
     }
