@@ -33,8 +33,6 @@ contract ContributionAccountingToken is ERC20Burnable, ERC20Permit, AccessContro
     address public immutable factory; // Reference to the factory contract that created this CAT
     
     uint256 public lastMintTimestamp;
-    string public tokenName; // Token name
-    string public tokenSymbol; // Token symbol
 
     uint256 constant denominator = 100000;  // Constant denominator for fee calculations
 
@@ -54,8 +52,6 @@ contract ContributionAccountingToken is ERC20Burnable, ERC20Permit, AccessContro
         maxSupply = _maxSupply;
         thresholdSupply = _thresholdSupply;
         maxExpansionRate = _maxExpansionRate;
-        tokenName = _name;
-        tokenSymbol = _symbol;
         lastMintTimestamp = block.timestamp;
     }
 
