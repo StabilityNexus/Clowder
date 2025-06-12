@@ -44,6 +44,7 @@ contract ContributionAccountingToken is ERC20Burnable, ERC20Permit, AccessContro
         string memory _name,
         string memory _symbol
     ) ERC20(_name, _symbol) ERC20Permit(_name) {
+        require(_maxSupply >= _thresholdSupply, "Max supply must be greater than or equal to threshold supply");
         _grantRole(DEFAULT_ADMIN_ROLE, defaultAdmin);
         _grantRole(MINTER_ROLE, defaultAdmin);
 
