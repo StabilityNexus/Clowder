@@ -10,7 +10,7 @@ import { CONTRIBUTION_ACCOUNTING_TOKEN_ABI } from "@/contractsABI/ContributionAc
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useWriteContract, useWaitForTransactionReceipt, useAccount, useChainId } from "wagmi";
+import { useWriteContract, useWaitForTransactionReceipt, useAccount, useChainId, useSwitchChain } from "wagmi";
 import { parseUnits, formatUnits } from "viem";
 import { showTransactionToast } from "@/components/ui/transaction-toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -48,6 +48,7 @@ export default function InteractionClient() {
   const searchParams = useSearchParams();
   const { isConnected, address } = useAccount();
   const currentChainId = useChainId();
+  const { switchChain } = useSwitchChain();
 
   // Helper function to format numbers with limited decimals and full precision on hover
   const formatNumber = (num: number, decimals: number = 4): string => {
@@ -817,45 +818,46 @@ export default function InteractionClient() {
           </motion.h1>
         </div>
 
-        {/* Chain Warning Banner */}
+        {/* Simple Network Switch Banner */}
         {isWrongChain && (
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.3 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
             className="mb-6"
           >
-            <Card className="border-2 border-red-500/50 bg-gradient-to-r from-red-50/90 to-red-100/90 dark:from-red-900/30 dark:to-red-800/30 backdrop-blur-sm shadow-lg hover:shadow-red-500/10 transition-all duration-300">
-              <CardContent className="p-6">
-                <div className="flex items-start gap-4">
-                  <div className="mt-1">
-                    <AlertTriangle className="h-6 w-6 text-red-500 dark:text-red-400 flex-shrink-0 animate-pulse" />
+            <div className="bg-gradient-to-r from-orange-50/90 to-red-50/90 dark:from-yellow-900/80 dark:to-amber-900/80 backdrop-blur-sm rounded-2xl border-2 border-orange-200/60 dark:border-yellow-400/40 p-6 shadow-lg">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-400 to-red-500 dark:from-red-500 dark:to-red-600 flex items-center justify-center shadow-lg">
+                    <AlertTriangle className="h-6 w-6 text-white" />
                   </div>
-                  <div className="flex-1 space-y-2">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-lg font-bold bg-clip-text text-transparent bg-gradient-to-r from-red-600 to-red-500 dark:from-red-400 dark:to-red-300">
-                        Wrong Network Detected
-                      </h3>
-                      <span className="px-2 py-1 text-xs font-medium bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-300 rounded-full">
-                        Action Required
-                      </span>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-sm text-red-600 dark:text-red-300">
-                        This token is deployed on <span className="font-semibold">{CHAIN_NAMES[chainId!]}</span> (Chain ID: {chainId})
-                      </p>
-                      <p className="text-sm text-red-600 dark:text-red-300">
-                        You are currently connected to Chain ID: <span className="font-semibold">{currentChainId}</span>
-                      </p>
-                      <p className="text-sm text-red-600 dark:text-red-300 mt-2">
-                        Please switch to the correct network to interact with this token.
-                      </p>
-                    </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-orange-800 dark:text-yellow-200">
+                      Wrong Network
+                    </h3>
+                    <p className="text-sm text-orange-600 dark:text-yellow-300">
+                      Please switch to <span className="font-semibold">{CHAIN_NAMES[chainId!]}</span> to continue
+                    </p>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+                <Button
+                  onClick={() => {
+                    try {
+                      switchChain({ chainId: chainId! });
+                      toast.success(`Switching to ${CHAIN_NAMES[chainId!]}...`);
+                    } catch (error) {
+                      console.error('Failed to switch network:', error);
+                      toast.error('Failed to switch network. Please switch manually in your wallet.');
+                    }
+                  }}
+                  className="h-10 px-6 bg-gradient-to-r from-red-500 to-red-600 dark:from-red-500 dark:to-red-600 hover:from-red-600 hover:to-red-700 dark:hover:from-red-600 dark:hover:to-red-700 text-white font-semibold rounded-xl shadow-lg transition-all duration-300 whitespace-nowrap"
+                >
+                  Switch Network
+                </Button>
+              </div>
+            </div>
           </motion.div>
         )}
 
