@@ -40,6 +40,13 @@ describe("CATFactory and ContributionAccountingToken", function () {
         expect(await token.symbol()).to.equal("TTK");
     });
 
+    it("should not allow creating CAT with maxSupply less than thresholdSupply", async function () {
+        // This should fail because maxSupply (5000) < thresholdSupply (10000)
+        await expect(
+            factory.createCAT(5000, 10000, 10, "InvalidToken", "INV")
+        ).to.be.reverted;
+    });
+
     it("should grant Minter Role and mint from other address", async function () {
         token = await ethers.getContractAt("ContributionAccountingToken", catAddress);
 
@@ -97,14 +104,22 @@ describe("CATFactory and ContributionAccountingToken", function () {
         await token.grantMinterRole(owner.address);
         await token.mint(owner.address, 1000);
         const total = await token.totalSupply();
+        const currentThreshold = await token.thresholdSupply();
+        
         // Try to reduce max supply below total supply, should revert with custom error
         await expect(
             token.connect(owner).reduceMaxSupply(total - 1n)
         ).to.be.revertedWithCustomError(token, "NewMaxSupplyBelowTotal");
 
-        // Now reduce to a valid value
-        await token.connect(owner).reduceMaxSupply(total + 1000n);
-        expect(await token.maxSupply()).to.equal(total + 1000n);
+        // Try to reduce max supply below threshold supply, should revert with custom error
+        await expect(
+            token.connect(owner).reduceMaxSupply(currentThreshold - 1n)
+        ).to.be.revertedWithCustomError(token, "NewMaxSupplyBelowThresholdSupply");
+
+        // Now reduce to a valid value (must be >= thresholdSupply and < current maxSupply)
+        const newMaxSupply = currentThreshold; // Set to threshold supply (minimum allowed)
+        await token.connect(owner).reduceMaxSupply(newMaxSupply);
+        expect(await token.maxSupply()).to.equal(newMaxSupply);
 
         // Reduce threshold supply to a valid value
         await token.connect(owner).reduceThresholdSupply(total);
