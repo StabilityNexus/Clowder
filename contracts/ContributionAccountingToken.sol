@@ -15,6 +15,7 @@ contract ContributionAccountingToken is ERC20Burnable, ERC20Permit, AccessContro
     error ExceedsMaxMintableAmount(uint256 requested, uint256 available);
     error NewMaxSupplyNotLess(uint256 newMax, uint256 currentMax);
     error NewMaxSupplyBelowTotal(uint256 newMax, uint256 total);
+    error NewMaxSupplyBelowThresholdSupply(uint256 newMax, uint256 thresholdSupply);
     error NewThresholdNotLess(uint256 newThreshold, uint256 currentThreshold);
     error NewThresholdBelowTotal(uint256 newThreshold, uint256 total);
     error NewMaxExpansionNotLess(uint256 newExp, uint256 currentExp);
@@ -88,6 +89,9 @@ contract ContributionAccountingToken is ERC20Burnable, ERC20Permit, AccessContro
         }
         if (newMaxSupply < totalSupply()) {
             revert NewMaxSupplyBelowTotal(newMaxSupply, totalSupply());
+        }
+        if (newMaxSupply < thresholdSupply) {
+            revert NewMaxSupplyBelowThresholdSupply(newMaxSupply, thresholdSupply);
         }
         maxSupply = newMaxSupply;
     }
