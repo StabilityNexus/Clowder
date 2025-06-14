@@ -8,9 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useRouter } from "next/navigation"
 import { ConnectButton } from "@rainbow-me/rainbowkit"
-import Service_1 from "../images/Service_1.png"
-import Service_2 from "../images/Service_2.png"
-import Service_3 from "../images/Service_3.png"
+
 import catLight from "../images/Light_cat.png"
 import catDark from "../images/Dark_cat.png"
 import { useTheme } from "next-themes"
@@ -20,11 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { motion, AnimatePresence } from "framer-motion"
 import { showTransactionToast } from "@/components/ui/transaction-toast"
 
-const services = [
-  { image: Service_1, alt: "Semi-Transferable", description: "Semi-Transferable" },
-  { image: Service_2, alt: "Secure against Inflation", description: "Secure against Inflation" },
-  { image: Service_3, alt: "Simple to Mint", description: "Simple to Mint" },
-]
+
 
 const supportedChains = [
   { id: "534351", name: "Scroll Sepolia" },

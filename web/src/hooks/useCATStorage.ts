@@ -22,8 +22,8 @@ interface UseCATStorageReturn {
   getAllUserRoles: () => Promise<UserRoleInfo[]>;
   
   // Cache Management
-  saveCache: (key: string, data: any, ttlMinutes?: number) => Promise<void>;
-  getCache: (key: string) => Promise<any | null>;
+  saveCache: (key: string, data: unknown, ttlMinutes?: number) => Promise<void>;
+  getCache: (key: string) => Promise<unknown | null>;
   deleteCache: (key: string) => Promise<void>;
   
   // Utility functions
@@ -219,7 +219,7 @@ export const useCATStorage = (): UseCATStorageReturn => {
   }, [address]);
 
   // Cache functions
-  const saveCache = useCallback(async (key: string, data: any, ttlMinutes: number = 30): Promise<void> => {
+  const saveCache = useCallback(async (key: string, data: unknown, ttlMinutes: number = 30): Promise<void> => {
     if (!address) throw new Error('User address not available');
     
     try {
@@ -230,7 +230,7 @@ export const useCATStorage = (): UseCATStorageReturn => {
     }
   }, [address]);
 
-  const getCache = useCallback(async (key: string): Promise<any | null> => {
+  const getCache = useCallback(async (key: string): Promise<unknown | null> => {
     if (!address) return null;
     
     try {

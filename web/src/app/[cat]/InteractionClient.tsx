@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
-import { Info, Coins, Settings, Unlock, Copy, ArrowUp, Target, AlertTriangle, Database, Wifi, WifiOff } from "lucide-react";
+import { Info, Coins, Settings, Unlock, Copy, ArrowUp, Target, AlertTriangle, Wifi, WifiOff } from "lucide-react";
 import { Card,  CardContent } from "@/components/ui/card";
 import { getPublicClient } from "@wagmi/core";
 import { config } from "@/utils/config";
@@ -502,7 +502,7 @@ export default function InteractionClient() {
         // Then sync with blockchain in background if online
         if (isOnline) {
           const lastSync = await getCache('tokenDetails_lastSync');
-          const shouldSync = !lastSync || Date.now() - lastSync > 5 * 60 * 1000; // 5 minutes
+          const shouldSync = !lastSync || Date.now() - (lastSync as number) > 5 * 60 * 1000; // 5 minutes
 
           if (shouldSync) {
             console.log('Starting background sync...');
