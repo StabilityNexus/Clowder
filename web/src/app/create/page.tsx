@@ -225,9 +225,21 @@ export default function CreateCAT() {
             message: "CAT contract deployed successfully!",
           });
           
+          // Trigger sync notification for my-cats page
+          localStorage.setItem('catCreated', JSON.stringify({
+            timestamp: Date.now(),
+            chainId: config.state.chainId,
+            hash: deployData
+          }));
+          
+          // Dispatch custom event for immediate sync if my-cats page is open
+          window.dispatchEvent(new CustomEvent('catCreated', {
+            detail: { chainId: config.state.chainId, hash: deployData }
+          }));
+          
           // Add a small delay before redirecting to ensure the blockchain state is updated
           setTimeout(() => {
-            router.push("/my-cats");
+            router.push("/my-cats?sync=true");
             setIsDeploying(false);
           }, 2000);
         } catch (error) {
