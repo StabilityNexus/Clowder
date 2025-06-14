@@ -41,7 +41,7 @@ const Navbar = () => {
                 priority
               />
               <h1
-                className="text-4xl font-bold ml-[-10px] pb-2 bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-blue-500 dark:from-[#FFD600] dark:to-yellow-100"
+                className="text-4xl font-bold ml-[-10px] pb-2 bg-clip-text text-transparent bg-gradient-to-r from-black to-black dark:from-[#FFD600] dark:to-yellow-100"
                 style={{
                   fontFamily: "var(--font-bebas-nueue)",
                   marginLeft: "-58px",
