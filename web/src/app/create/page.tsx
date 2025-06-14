@@ -95,7 +95,7 @@ const fields = [
     type: "number",
     placeholder: "500000",
     description: "The supply threshold above which further supply expansion is restricted by the maximum expansion rate.",
-    validate: (value: string, _formData: DeployContractProps) => ({
+    validate: (value: string) => ({
       isValid: /^\d+$/.test(value) && 
                parseInt(value) > 0,
       errorMessage: "Threshold must be a positive number less than maximum supply"
@@ -256,7 +256,7 @@ export default function CreateCAT() {
     // Validate the field
     const field = fields.find(f => f.id === name);
     if (field?.validate) {
-      const validationResult = field.validate(value, formData);
+      const validationResult = field.validate(value);
       setValidation(prev => ({
         ...prev,
         [name]: validationResult
@@ -280,7 +280,7 @@ export default function CreateCAT() {
 
     fields.forEach(field => {
       if (field.validate) {
-        const result = field.validate(formData[field.id as keyof DeployContractProps], formData);
+        const result = field.validate(formData[field.id as keyof DeployContractProps]);
         newValidation[field.id] = result;
         if (!result.isValid) isValid = false;
       }
