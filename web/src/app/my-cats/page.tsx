@@ -77,7 +77,7 @@ export default function MyCATsPage() {
     totalPages: 0,
     totalCreatorCATs: 0,
     totalMinterCATs: 0,
-    catsPerPage: 3,
+    catsPerPage: 6,
   });
   const [isOnline, setIsOnline] = useState(true);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
