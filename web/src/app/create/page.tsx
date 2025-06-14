@@ -95,7 +95,7 @@ const fields = [
     type: "number",
     placeholder: "500000",
     description: "The supply threshold above which further supply expansion is restricted by the maximum expansion rate.",
-    validate: (value: string, formData: DeployContractProps) => ({
+    validate: (value: string, _formData: DeployContractProps) => ({
       isValid: /^\d+$/.test(value) && 
                parseInt(value) > 0,
       errorMessage: "Threshold must be a positive number less than maximum supply"

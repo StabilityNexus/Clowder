@@ -47,7 +47,7 @@ export interface CacheMetadata {
   key: string;
   userAddress: string;
   expiresAt: number;
-  data: any;
+  data: unknown;
   createdAt: number;
   updatedAt: number;
 }
@@ -413,7 +413,7 @@ class IndexedDBService {
   }
 
   // Cache operations for performance optimization
-  async saveCache(key: string, userAddress: string, data: any, ttlMinutes: number = 30): Promise<void> {
+  async saveCache(key: string, userAddress: string, data: unknown, ttlMinutes: number = 30): Promise<void> {
     const db = await this.ensureDB();
     const transaction = db.transaction([this.stores.cacheMetadata], 'readwrite');
     const store = transaction.objectStore(this.stores.cacheMetadata);
@@ -435,7 +435,7 @@ class IndexedDBService {
     });
   }
 
-  async getCache(key: string, userAddress: string): Promise<any | null> {
+  async getCache(key: string, userAddress: string): Promise<unknown | null> {
     const db = await this.ensureDB();
     const transaction = db.transaction([this.stores.cacheMetadata], 'readonly');
     const store = transaction.objectStore(this.stores.cacheMetadata);

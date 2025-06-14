@@ -261,7 +261,7 @@ export default function MyCATsPage() {
       // Check cache first unless forcing sync
       if (!forceSync) {
         const lastSync = await getCache('lastSyncTime');
-        if (lastSync && Date.now() - lastSync < 5 * 60 * 1000) { // 5 minutes
+        if (lastSync && Date.now() - (lastSync as number) < 5 * 60 * 1000) { // 5 minutes
           console.log('Recent sync found, skipping blockchain fetch');
           setIsSyncing(false);
           return;
@@ -974,7 +974,7 @@ export default function MyCATsPage() {
                       </div>
                       <div className="text-center">
                         <h3 className="text-lg font-bold text-orange-800 dark:text-yellow-200">
-                          You're Offline
+                          You&apos;re Offline
                         </h3>
                         <p className="text-sm text-orange-600 dark:text-yellow-300">
                           No cached CATs available. Please connect to the internet to sync your data.
