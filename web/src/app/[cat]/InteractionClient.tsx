@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
-import { Info, Coins, Settings, Unlock, Copy, ArrowUp, Target, AlertTriangle } from "lucide-react";
+import { Info, Coins, Settings, Unlock, Copy, ArrowUp, Target, AlertTriangle, Database, Wifi, WifiOff } from "lucide-react";
 import { Card,  CardContent } from "@/components/ui/card";
 import { getPublicClient } from "@wagmi/core";
 import { config } from "@/utils/config";
@@ -18,9 +18,11 @@ import { LoadingState } from "@/components/ui/loading-state";
 import { ButtonLoadingState } from "@/components/ui/button-loading-state";
 import toast from "react-hot-toast";
 import { catExplorer } from "@/utils/catExplorer";
+import { useCATStorage } from "@/hooks/useCATStorage";
+import { SupportedChainId } from "@/utils/indexedDB";
 
-// Define supported chain IDs
-type SupportedChainId = 137 | 534351 | 5115 | 61 | 8453;
+// Define supported chain IDs - use imported type from IndexedDB
+// type SupportedChainId = 137 | 534351 | 5115 | 61 | 8453;
 
 // Chain names mapping
 const CHAIN_NAMES: Record<SupportedChainId, string> = {
@@ -50,6 +52,20 @@ export default function InteractionClient() {
   const currentChainId = useChainId();
   const { switchChain } = useSwitchChain();
 
+  const decimals = 18;
+
+  // IndexedDB storage hook
+  const {
+    saveTokenDetails,
+    getTokenDetails: getStoredTokenDetails,
+    saveUserRole,
+    getUserRole,
+    saveCache,
+    getCache,
+    isInitialized,
+    error: storageError
+  } = useCATStorage();
+
   // Helper function to format numbers with limited decimals and full precision on hover
   const formatNumber = (num: number, decimals: number = 4): string => {
     if (num === 0) return "0";
@@ -65,7 +81,10 @@ export default function InteractionClient() {
   const [newMaxExpansionRate, setNewMaxExpansionRate] = useState("");
   const [transferRestricted, setTransferRestricted] = useState<boolean>(true);
   const [mintToAddress, setMintToAddress] = useState<string>("");
-  const [decimals, setDecimals] = useState<number>(18);
+  const [isOnline, setIsOnline] = useState(true);
+  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  
 
   const [tokenAddress, setTokenAddress] = useState<`0x${string}`>("0x0");
   const [chainId, setChainId] = useState<SupportedChainId | null>(null);
@@ -193,6 +212,20 @@ export default function InteractionClient() {
   // Check if user is on wrong chain
   const isWrongChain = isConnected && chainId && currentChainId ? currentChainId !== chainId : false;
 
+  // Monitor online/offline status
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
   // Type guard for chain ID validation
   const isValidChainId = useCallback((chainId: number): chainId is SupportedChainId => {
     const validChainIds: SupportedChainId[] = [ 137, 534351, 5115, 61, 8453];
@@ -228,17 +261,14 @@ export default function InteractionClient() {
     }
   }, [searchParams, isValidChainId]);
 
-  const getTokenDetails = useCallback(async () => {
-    if (!tokenAddress || !chainId || !address) {
-      setError("Invalid token address or chain ID");
-      setIsLoading(false);
-      return;
-    }
+  // Fetch token details from blockchain
+  const fetchTokenDetailsFromBlockchain = useCallback(async (): Promise<boolean> => {
+    if (!tokenAddress || !chainId || !address) return false;
 
     try {
-      setIsLoading(true);
-      setError(null);
-
+      setIsSyncing(true);
+      console.log('Fetching token details from blockchain...', { tokenAddress, chainId });
+      
       const publicClient = getPublicClient(config, { chainId });
       if (!publicClient) {
         throw new Error(`No public client available for chain ${chainId}`);
@@ -258,22 +288,6 @@ export default function InteractionClient() {
         functionName: "symbol",
       });
       await delay(200);
-
-      // Fetch decimals
-      const tokenDecimals = await makeContractCallWithRetry(publicClient, {
-        address: tokenAddress,
-        abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
-        functionName: "decimals",
-      });
-      await delay(200);
-
-      if (!name || !symbol) {
-        throw new Error("Invalid token contract");
-      }
-
-      // Set decimals state
-      const decimalsValue = Number(tokenDecimals as bigint);
-      setDecimals(decimalsValue);
 
       // Batch 2: Token parameters (small batches with delays)
       const [maxSupply, threshold] = await Promise.all([
@@ -318,73 +332,224 @@ export default function InteractionClient() {
       ]);
       await delay(300);
 
-      setTokenDetails({
-        tokenName: name as string,
-        tokenSymbol: symbol as string,
-        maxSupply: Number(formatUnits(maxSupply as bigint, decimalsValue)),
-        thresholdSupply: Number(formatUnits(threshold as bigint, decimalsValue)),
-        maxExpansionRate: Number(expansionRate as bigint) / 100,
-        currentSupply: Number(formatUnits(currentSupply as bigint, decimalsValue)),
-        lastMintTimestamp: Number(lastMint as bigint),
-        maxMintableAmount: Number(formatUnits(maxMintable as bigint, decimalsValue)),
-      });
-
       // Batch 3: Transfer restrictions
       const restricted = await makeContractCallWithRetry(publicClient, {
         address: tokenAddress,
         abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
         functionName: "transferRestricted",
       });
-      setTransferRestricted(restricted as boolean);
       await delay(300);
 
-      // Batch 4: User roles (if address is available)
-      if (address) {
-        const adminRole = await makeContractCallWithRetry(publicClient, {
-          address: tokenAddress,
-          abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
-          functionName: "DEFAULT_ADMIN_ROLE",
-        });
-        await delay(300);
+      // Batch 4: User roles
+      const adminRole = await makeContractCallWithRetry(publicClient, {
+        address: tokenAddress,
+        abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
+        functionName: "DEFAULT_ADMIN_ROLE",
+      });
+      await delay(300);
 
-        const hasAdminRole = await makeContractCallWithRetry(publicClient, {
-          address: tokenAddress,
-          abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
-          functionName: "hasRole",
-          args: [adminRole as `0x${string}`, address as `0x${string}`],
-        });
-        setIsUserAdmin(hasAdminRole as boolean);
-        await delay(300);
+      const hasAdminRole = await makeContractCallWithRetry(publicClient, {
+        address: tokenAddress,
+        abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
+        functionName: "hasRole",
+        args: [adminRole as `0x${string}`, address as `0x${string}`],
+      });
+      await delay(300);
 
-        const minterRole = await makeContractCallWithRetry(publicClient, {
-          address: tokenAddress,
-          abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
-          functionName: "MINTER_ROLE",
-        });
-        await delay(300);
+      const minterRole = await makeContractCallWithRetry(publicClient, {
+        address: tokenAddress,
+        abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
+        functionName: "MINTER_ROLE",
+      });
+      await delay(300);
 
-        const hasMinterRole = await makeContractCallWithRetry(publicClient, {
+      const hasMinterRole = await makeContractCallWithRetry(publicClient, {
+        address: tokenAddress,
+        abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
+        functionName: "hasRole",
+        args: [minterRole as `0x${string}`, address as `0x${string}`],
+      });
+
+      // Update state with fresh data
+      const newTokenDetails = {
+        tokenName: name as string,
+        tokenSymbol: symbol as string,
+        maxSupply: Number(formatUnits(maxSupply as bigint, decimals)),
+        thresholdSupply: Number(formatUnits(threshold as bigint, decimals)),
+        maxExpansionRate: Number(expansionRate as bigint) / 100,
+        currentSupply: Number(formatUnits(currentSupply as bigint, decimals)),
+        lastMintTimestamp: Number(lastMint as bigint),
+        maxMintableAmount: Number(formatUnits(maxMintable as bigint, decimals)),
+      };
+
+      setTokenDetails(newTokenDetails);
+      setTransferRestricted(restricted as boolean);
+      setIsUserAdmin(hasAdminRole as boolean);
+      setIsUserMinter(hasMinterRole as boolean);
+
+      // Save to IndexedDB
+      try {
+        console.log('Saving token details to IndexedDB...', newTokenDetails.tokenName);
+        
+        await saveTokenDetails({
+          chainId,
           address: tokenAddress,
-          abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
-          functionName: "hasRole",
-          args: [minterRole as `0x${string}`, address as `0x${string}`],
+          tokenName: newTokenDetails.tokenName,
+          tokenSymbol: newTokenDetails.tokenSymbol,
+          maxSupply: newTokenDetails.maxSupply,
+          thresholdSupply: newTokenDetails.thresholdSupply,
+          maxExpansionRate: newTokenDetails.maxExpansionRate,
+          currentSupply: newTokenDetails.currentSupply,
+          lastMintTimestamp: newTokenDetails.lastMintTimestamp,
+          maxMintableAmount: newTokenDetails.maxMintableAmount,
+          transferRestricted: restricted as boolean,
+          userAddress: address
         });
-        setIsUserMinter(hasMinterRole as boolean);
+
+        await saveUserRole({
+          chainId,
+          tokenAddress,
+          userAddress: address,
+          isAdmin: hasAdminRole as boolean,
+          isMinter: hasMinterRole as boolean
+        });
+
+        // Update cache timestamp
+        await saveCache('tokenDetails_lastSync', Date.now(), 30); // 30 minutes TTL
+        setLastSyncTime(new Date());
+        
+        console.log('Successfully saved token details to IndexedDB');
+      } catch (storageError) {
+        console.error('Error saving to IndexedDB:', storageError);
+        // Don't fail the entire operation if storage fails
+        toast.error('Failed to cache data locally, but blockchain sync succeeded');
       }
-      
+
+      return true;
     } catch (error) {
-      console.error("Error fetching token details:", error);
-      setError(error instanceof Error ? error.message : "Failed to fetch token details");
+      console.error("Error fetching token details from blockchain:", error);
+      throw error;
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [tokenAddress, chainId, address, makeContractCallWithRetry, saveTokenDetails, saveUserRole, saveCache]);
+
+  // Load token details from storage (offline-first approach)
+  const loadTokenDetailsFromStorage = useCallback(async (): Promise<boolean> => {
+    if (!isInitialized || !address || !tokenAddress || !chainId) return false;
+
+    try {
+      const [storedTokenDetails, storedUserRole] = await Promise.all([
+        getStoredTokenDetails(chainId, tokenAddress),
+        getUserRole(chainId, tokenAddress)
+      ]);
+
+      if (storedTokenDetails) {
+        // Load from storage immediately
+        setTokenDetails({
+          tokenName: storedTokenDetails.tokenName,
+          tokenSymbol: storedTokenDetails.tokenSymbol,
+          maxSupply: storedTokenDetails.maxSupply,
+          thresholdSupply: storedTokenDetails.thresholdSupply,
+          maxExpansionRate: storedTokenDetails.maxExpansionRate,
+          currentSupply: storedTokenDetails.currentSupply,
+          lastMintTimestamp: storedTokenDetails.lastMintTimestamp,
+          maxMintableAmount: storedTokenDetails.maxMintableAmount,
+        });
+
+        setTransferRestricted(storedTokenDetails.transferRestricted);
+        
+        if (storedUserRole) {
+          setIsUserAdmin(storedUserRole.isAdmin);
+          setIsUserMinter(storedUserRole.isMinter);
+        }
+
+        console.log('Loaded token details from storage:', storedTokenDetails.tokenName);
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      console.error('Error loading token details from storage:', error);
+      return false;
+    }
+  }, [isInitialized, address, tokenAddress, chainId, getStoredTokenDetails, getUserRole]);
+
+  // Main initialization function with offline-first approach  
+  const initializeTokenDetails = useCallback(async () => {
+    if (!tokenAddress || !chainId || !address) {
+      setError("Invalid token address, chain ID, or user not connected");
+      setIsLoading(false);
+      return;
+    }
+
+    if (!isInitialized) {
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setError(storageError);
+
+      // First, try to load from IndexedDB (offline-first)
+      const hasStoredData = await loadTokenDetailsFromStorage();
+      
+      if (hasStoredData) {
+        // Show data immediately from storage
+        setIsLoading(false);
+        
+        // Then sync with blockchain in background if online
+        if (isOnline) {
+          const lastSync = await getCache('tokenDetails_lastSync');
+          const shouldSync = !lastSync || Date.now() - lastSync > 5 * 60 * 1000; // 5 minutes
+
+          if (shouldSync) {
+            console.log('Starting background sync...');
+            // Background sync
+            fetchTokenDetailsFromBlockchain().catch(error => {
+              console.error('Background sync failed:', error);
+              // Don't show error for background sync failures
+            });
+          } else {
+            console.log('Recent sync found, skipping blockchain fetch');
+          }
+        }
+      } else {
+        // No stored data, must fetch from blockchain
+        if (isOnline) {
+          console.log('No cached data, fetching from blockchain...');
+          await fetchTokenDetailsFromBlockchain();
+        } else {
+          setError("No cached data available. Please connect to the internet to load token details.");
+        }
+      }
+    } catch (error) {
+      console.error("Error initializing token details:", error);
+      setError(error instanceof Error ? error.message : "Failed to load token details");
     } finally {
       setIsLoading(false);
     }
-  }, [tokenAddress, chainId, address, makeContractCallWithRetry]);
+  }, [tokenAddress, chainId, address, isInitialized, storageError, loadTokenDetailsFromStorage, isOnline, getCache, fetchTokenDetailsFromBlockchain]);
+
+  // Manual sync function for force refresh
+  const handleManualSync = useCallback(async () => {
+    if (!tokenAddress || !chainId || !address || !isOnline) return;
+    
+    try {
+      await fetchTokenDetailsFromBlockchain();
+      toast.success('Token details synced successfully');
+    } catch (error) {
+      console.error('Manual sync failed:', error);
+      toast.error('Failed to sync token details. Please try again.');
+    }
+  }, [tokenAddress, chainId, address, isOnline, fetchTokenDetailsFromBlockchain]);
 
   useEffect(() => {
-    if (tokenAddress && chainId) {
-      getTokenDetails();
+    if (isInitialized && tokenAddress && chainId && address) {
+      initializeTokenDetails();
     }
-  }, [tokenAddress, chainId, getTokenDetails]);
+  }, [isInitialized, tokenAddress, chainId, address, initializeTokenDetails]);
 
 
 
@@ -423,11 +588,11 @@ export default function InteractionClient() {
         chainId: chainId!,
         message: "Tokens minted successfully!",
       });
-      // Refresh token details to get updated lastMintTimestamp and supply
-      getTokenDetails();
+      // Force refresh token details to get updated data
+      fetchTokenDetailsFromBlockchain().catch(console.error);
       setIsSigning(false);
     }
-  }, [mintData, chainId, getTokenDetails]);
+  }, [mintData, chainId, fetchTokenDetailsFromBlockchain]);
 
   useEffect(() => {
     if (reduceMaxSupplyData) {
@@ -436,11 +601,11 @@ export default function InteractionClient() {
         chainId: chainId!,
         message: "Max supply updated successfully!",
       });
-      // Refresh token details
-      getTokenDetails();
+      // Force refresh token details
+      fetchTokenDetailsFromBlockchain().catch(console.error);
       setIsSigning(false);
     }
-  }, [reduceMaxSupplyData, chainId, getTokenDetails]);
+  }, [reduceMaxSupplyData, chainId, fetchTokenDetailsFromBlockchain]);
 
   useEffect(() => {
     if (reduceThresholdSupplyData) {
@@ -449,11 +614,11 @@ export default function InteractionClient() {
         chainId: chainId!,
         message: "Threshold supply updated successfully!",
       });
-      // Refresh token details
-      getTokenDetails();
+      // Force refresh token details
+      fetchTokenDetailsFromBlockchain().catch(console.error);
       setIsSigning(false);
     }
-  }, [reduceThresholdSupplyData, chainId, getTokenDetails]);
+  }, [reduceThresholdSupplyData, chainId, fetchTokenDetailsFromBlockchain]);
 
   useEffect(() => {
     if (reduceMaxExpansionRateData) {
@@ -462,11 +627,11 @@ export default function InteractionClient() {
         chainId: chainId!,
         message: "Max expansion rate updated successfully!",
       });
-      // Refresh token details
-      getTokenDetails();
+      // Force refresh token details
+      fetchTokenDetailsFromBlockchain().catch(console.error);
       setIsSigning(false);
     }
-  }, [reduceMaxExpansionRateData, chainId, getTokenDetails]);
+  }, [reduceMaxExpansionRateData, chainId, fetchTokenDetailsFromBlockchain]);
 
   useEffect(() => {
     if (disableTransferRestrictionData) {
@@ -475,11 +640,11 @@ export default function InteractionClient() {
         chainId: chainId!,
         message: "Transfer restriction disabled successfully!",
       });
-      // Refresh token details
-      getTokenDetails();
+      // Force refresh token details
+      fetchTokenDetailsFromBlockchain().catch(console.error);
       setIsSigning(false);
     }
-  }, [disableTransferRestrictionData, chainId, getTokenDetails]);
+  }, [disableTransferRestrictionData, chainId, fetchTokenDetailsFromBlockchain]);
 
   useEffect(() => {
     if (grantMinterRoleData) {
@@ -845,6 +1010,54 @@ export default function InteractionClient() {
           >
             {tokenDetails.tokenSymbol} Token Management
           </motion.h1>
+
+          {/* Status indicators */}
+          <div className="flex justify-center items-center gap-4 mt-6">
+            {/* Online/Offline Status */}
+            <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 dark:bg-black/20 border border-white/30 dark:border-yellow-400/30">
+              {isOnline ? (
+                <Wifi className="h-4 w-4 text-green-500" />
+              ) : (
+                <WifiOff className="h-4 w-4 text-red-500" />
+              )}
+              <span className="text-sm font-medium text-gray-700 dark:text-yellow-200">
+                {isOnline ? 'Online' : 'Offline'}
+              </span>
+            </div>
+
+            {/* Database Status */}
+            {/* <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 dark:bg-black/20 border border-white/30 dark:border-yellow-400/30">
+              <Database className={`h-4 w-4 ${isInitialized ? 'text-green-500' : 'text-red-500'}`} />
+              <span className="text-sm font-medium text-gray-700 dark:text-yellow-200">
+                {isInitialized ? 'Database Ready' : 'Database Error'}
+              </span>
+            </div> */}
+
+            {/* Sync Button and Status */}
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={handleManualSync}
+                disabled={!isOnline || isSyncing || !tokenAddress || !chainId || !address}
+                size="sm"
+                className="h-8 px-3 bg-blue-500 dark:bg-yellow-600 hover:bg-blue-600 dark:hover:bg-yellow-700 text-white text-sm rounded-full disabled:opacity-50"
+              >
+                {isSyncing ? (
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    className="h-4 w-4 border-2 border-white border-t-transparent rounded-full"
+                  />
+                ) : (
+                  "Sync"
+                )}
+              </Button>
+              {lastSyncTime && (
+                <span className="text-xs text-gray-500 dark:text-yellow-300">
+                  Last sync: {lastSyncTime.toLocaleTimeString()}
+                </span>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Simple Network Switch Banner */}

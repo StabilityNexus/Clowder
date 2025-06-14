@@ -10,15 +10,17 @@ import { getPublicClient } from "@wagmi/core";
 import { CAT_FACTORY_ABI } from "@/contractsABI/CatFactoryABI";
 import detectEthereumProvider from "@metamask/detect-provider";
 import { CONTRIBUTION_ACCOUNTING_TOKEN_ABI } from "@/contractsABI/ContributionAccountingTokenABI";
-import { motion } from "framer-motion";
-import { Plus, Search, ChevronLeft, ChevronRight } from "lucide-react";
-import { showTransactionToast } from "@/components/ui/transaction-toast";
+import { motion, AnimatePresence } from "framer-motion";
+import { Plus, Search, ChevronLeft, ChevronRight, Database, Wifi, WifiOff } from "lucide-react";
 import { LoadingState } from "@/components/ui/loading-state";
 import { ChainDropdown } from "../../components/ChainDropdown";
 import { CatRoleDropdown } from "../../components/CatRoleDropdown";
+import { useCATStorage } from "@/hooks/useCATStorage";
+import { SupportedChainId, CatDetails as StoredCatDetails } from "@/utils/indexedDB";
+import toast from "react-hot-toast";
 
-// Define supported chain IDs
-type SupportedChainId = 137 | 534351 | 5115 | 61 | 8453;
+// Define supported chain IDs - use the imported type from IndexedDB
+// type SupportedChainId = 137 | 534351 | 5115 | 61 | 8453;
 
 // Chain ID to name mapping
 const CHAIN_NAMES: Record<SupportedChainId, string> = {
@@ -76,9 +78,35 @@ export default function MyCATsPage() {
     totalMinterCATs: 0,
     catsPerPage: 6,
   });
+  const [isOnline, setIsOnline] = useState(true);
+  const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
   
   const { address } = useAccount();
   const currentChainId = useChainId();
+  const {
+    getAllCatDetailsForUser,
+    getCatDetailsByRole,
+    batchSaveCatDetails,
+    saveCache,
+    getCache,
+    isInitialized,
+    error: storageError
+  } = useCATStorage();
+
+  // Monitor online status
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   // Function to get sorted chain options with connected chain first
   const getSortedChainOptions = useCallback(() => {
@@ -99,6 +127,194 @@ export default function MyCATsPage() {
     
     return sortedChains;
   }, [currentChainId]);
+
+  // Load CATs from IndexedDB with offline-first approach
+  const loadCATsFromStorage = useCallback(async (): Promise<CatDetails[]> => {
+    if (!isInitialized || !address) return [];
+
+    try {
+      let storedCATs: StoredCatDetails[] = [];
+
+      if (roleFilter === "all") {
+        storedCATs = await getAllCatDetailsForUser(
+          selectedChainId === "all" ? undefined : selectedChainId
+        );
+      } else {
+        const adminCATs = roleFilter === "creator" 
+          ? await getCatDetailsByRole('admin')
+          : [];
+        const minterCATs = roleFilter === "minter"
+          ? await getCatDetailsByRole('minter')
+          : [];
+        
+        storedCATs = [...adminCATs, ...minterCATs];
+        
+        // Filter by chain if needed
+        if (selectedChainId !== "all") {
+          storedCATs = storedCATs.filter(cat => cat.chainId === selectedChainId);
+        }
+      }
+
+      // Apply search filter
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        storedCATs = storedCATs.filter(cat => 
+          cat.tokenName.toLowerCase().includes(query) ||
+          cat.tokenSymbol.toLowerCase().includes(query) ||
+          cat.address.toLowerCase().includes(query)
+        );
+      }
+
+      // Convert StoredCatDetails to CatDetails (address type conversion)
+      return storedCATs.map(cat => ({
+        chainId: cat.chainId,
+        address: cat.address as `0x${string}`,
+        tokenName: cat.tokenName,
+        tokenSymbol: cat.tokenSymbol,
+        userRole: cat.userRole
+      }));
+    } catch (error) {
+      console.error('Error loading CATs from storage:', error);
+      return [];
+    }
+  }, [isInitialized, address, getAllCatDetailsForUser, getCatDetailsByRole, selectedChainId, roleFilter, searchQuery]);
+
+  // Fetch all CATs from blockchain (existing logic extracted)
+  const fetchAllCATsFromBlockchain = useCallback(async (): Promise<CatDetails[]> => {
+    if (!address) return [];
+
+    const allCATs: CatDetails[] = [];
+    
+    try {
+      for (const [chainId, factoryAddress] of Object.entries(ClowderVaultFactories)) {
+        if (!isValidChainId(chainId)) continue;
+
+        const publicClient = getPublicClient(config, { chainId: Number(chainId) as SupportedChainId });
+        if (!publicClient) continue;
+
+        try {
+          // Get creator CATs
+          const creatorCount = await publicClient.readContract({
+            address: factoryAddress as `0x${string}`,
+            abi: CAT_FACTORY_ABI,
+            functionName: "getCreatorCATCount",
+            args: [address as `0x${string}`],
+          }) as bigint;
+
+          if (Number(creatorCount) > 0) {
+            const creatorAddresses = await publicClient.readContract({
+              address: factoryAddress as `0x${string}`,
+              abi: CAT_FACTORY_ABI,
+              functionName: "getCreatorCATAddresses",
+              args: [address as `0x${string}`, BigInt(0), creatorCount],
+            }) as `0x${string}`[];
+
+            const creatorCATs = await fetchCATDetails(creatorAddresses, Number(chainId) as SupportedChainId, 'admin');
+            allCATs.push(...creatorCATs);
+          }
+
+          // Get minter CATs
+          const minterCount = await publicClient.readContract({
+            address: factoryAddress as `0x${string}`,
+            abi: CAT_FACTORY_ABI,
+            functionName: "getMinterCATCount",
+            args: [address as `0x${string}`],
+          }) as bigint;
+
+          if (Number(minterCount) > 0) {
+            const minterAddresses = await publicClient.readContract({
+              address: factoryAddress as `0x${string}`,
+              abi: CAT_FACTORY_ABI,
+              functionName: "getMinterCATAddresses",
+              args: [address as `0x${string}`, BigInt(0), minterCount],
+            }) as `0x${string}`[];
+
+            const minterCATs = await fetchCATDetails(minterAddresses, Number(chainId) as SupportedChainId, 'minter');
+            allCATs.push(...minterCATs);
+          }
+        } catch (error) {
+          console.error(`Error fetching CATs for chain ${chainId}:`, error);
+          // Continue with other chains
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching all CATs from blockchain:', error);
+    }
+
+    return allCATs;
+  }, [address]);
+
+  // Sync data with blockchain
+  const syncWithBlockchain = useCallback(async (forceSync: boolean = false): Promise<void> => {
+    if (!address) return;
+
+    // Check if offline
+    if (!isOnline) {
+      toast.error('Cannot sync while offline. Please check your internet connection.');
+      return;
+    }
+
+    try {
+      setIsSyncing(true);
+      console.log('Starting blockchain sync...', { forceSync });
+      
+      // Check cache first unless forcing sync
+      if (!forceSync) {
+        const lastSync = await getCache('lastSyncTime');
+        if (lastSync && Date.now() - lastSync < 5 * 60 * 1000) { // 5 minutes
+          console.log('Recent sync found, skipping blockchain fetch');
+          setIsSyncing(false);
+          return;
+        }
+      }
+
+      // Fetch from blockchain using existing logic
+      const blockchainCATs = await fetchAllCATsFromBlockchain();
+      
+      if (blockchainCATs.length > 0) {
+        // Save to IndexedDB
+        await batchSaveCatDetails(blockchainCATs.map(cat => ({
+          chainId: cat.chainId,
+          address: cat.address,
+          tokenName: cat.tokenName,
+          tokenSymbol: cat.tokenSymbol,
+          userRole: cat.userRole,
+          userAddress: address
+        })));
+
+        // Update cache timestamp
+        await saveCache('lastSyncTime', Date.now(), 60); // 1 hour TTL
+        setLastSyncTime(new Date());
+        
+        toast.success(`Synced ${blockchainCATs.length} CATs from blockchain`);
+      } else {
+        toast.success('Sync completed - no new CATs found');
+      }
+    } catch (error) {
+      console.error('Error syncing with blockchain:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      toast.error(`Failed to sync with blockchain: ${errorMessage}`);
+    } finally {
+      setIsSyncing(false);
+    }
+  }, [address, isOnline, getCache, batchSaveCatDetails, saveCache, fetchAllCATsFromBlockchain]);
+
+  // Manual sync function for consistency with InteractionClient
+  const handleManualSync = useCallback(async () => {
+    if (!address || !isOnline) {
+      if (!isOnline) {
+        toast.error('Cannot sync while offline. Please check your internet connection.');
+      }
+      return;
+    }
+    
+    try {
+      await syncWithBlockchain(true);
+    } catch (error) {
+      console.error('Manual sync failed:', error);
+      toast.error('Failed to sync CATs. Please try again.');
+    }
+  }, [address, isOnline, syncWithBlockchain]);
 
   // Calculate total counts for pagination
   const fetchTotalCounts = useCallback(async (): Promise<{totalCreatorCATs: number, totalMinterCATs: number}> => {
@@ -428,56 +644,111 @@ export default function MyCATsPage() {
     }
   }, []);
 
-  // Initialize pagination and load first page
+  // Initialize pagination with IndexedDB integration (offline-first approach)
   const initializePagination = useCallback(async () => {
-    if (!address) {
+    if (!address || !isInitialized) {
       setIsLoading(false);
       return;
     }
 
     try {
       setIsLoading(true);
-      setError(null);
+      setError(storageError);
 
-             const { totalCreatorCATs, totalMinterCATs } = await fetchTotalCounts();
-       
-       // Calculate total based on role filter
-       let totalCATs = totalCreatorCATs + totalMinterCATs;
-       if (roleFilter === "creator") {
-         totalCATs = totalCreatorCATs;
-       } else if (roleFilter === "minter") {
-         totalCATs = totalMinterCATs;
-       }
-       
-       const totalPages = Math.ceil(totalCATs / pagination.catsPerPage);
+      // First, try to load from IndexedDB (offline-first)
+      const storedCATs = await loadCATsFromStorage();
+      
+      if (storedCATs.length > 0) {
+        // Calculate pagination from stored data
+        const totalCATs = storedCATs.length;
+        const creatorCount = storedCATs.filter(cat => cat.userRole === 'admin').length;
+        const minterCount = storedCATs.filter(cat => cat.userRole === 'minter').length;
+        const totalPages = Math.ceil(totalCATs / pagination.catsPerPage);
+        
+        setPagination(prev => ({
+          ...prev,
+          totalPages,
+          totalCreatorCATs: creatorCount,
+          totalMinterCATs: minterCount,
+          currentPage: 1,
+        }));
 
-      setPagination(prev => ({
-        ...prev,
-        totalPages,
-        totalCreatorCATs,
-        totalMinterCATs,
-        currentPage: 1
-      }));
+        // Show first page from stored data
+        const startIndex = 0;
+        const endIndex = pagination.catsPerPage;
+        setCurrentPageCATs(storedCATs.slice(startIndex, endIndex));
+        
+        // Show data immediately from storage
+        setIsLoading(false);
+        
+        // Then sync with blockchain in background if online
+        if (isOnline) {
+          syncWithBlockchain(false).then(async () => {
+            // Refresh data after successful sync
+            const refreshedCATs = await loadCATsFromStorage();
+            if (refreshedCATs.length !== storedCATs.length) {
+              // Data changed, refresh the display
+              const newTotalCATs = refreshedCATs.length;
+              const newCreatorCount = refreshedCATs.filter(cat => cat.userRole === 'admin').length;
+              const newMinterCount = refreshedCATs.filter(cat => cat.userRole === 'minter').length;
+              const newTotalPages = Math.ceil(newTotalCATs / pagination.catsPerPage);
+              
+              setPagination(prev => ({
+                ...prev,
+                totalPages: newTotalPages,
+                totalCreatorCATs: newCreatorCount,
+                totalMinterCATs: newMinterCount,
+              }));
 
-      if (totalCATs > 0) {
-        const firstPageCATs = await fetchCATsForPage(1);
-        setCurrentPageCATs(firstPageCATs);
+              const newStartIndex = 0;
+              const newEndIndex = pagination.catsPerPage;
+              setCurrentPageCATs(refreshedCATs.slice(newStartIndex, newEndIndex));
+            }
+          }).catch(console.error);
+        }
       } else {
-        setCurrentPageCATs([]);
+        // No stored data, must fetch from blockchain
+        if (isOnline) {
+          await syncWithBlockchain(true); // Force sync
+          // Reload from storage after sync
+          const newStoredCATs = await loadCATsFromStorage();
+          
+          const totalCATs = newStoredCATs.length;
+          const creatorCount = newStoredCATs.filter(cat => cat.userRole === 'admin').length;
+          const minterCount = newStoredCATs.filter(cat => cat.userRole === 'minter').length;
+          const totalPages = Math.ceil(totalCATs / pagination.catsPerPage);
+          
+          setPagination(prev => ({
+            ...prev,
+            totalPages,
+            totalCreatorCATs: creatorCount,
+            totalMinterCATs: minterCount,
+            currentPage: 1,
+          }));
+
+          const startIndex = 0;
+          const endIndex = pagination.catsPerPage;
+          setCurrentPageCATs(newStoredCATs.slice(startIndex, endIndex));
+        } else {
+          setError("No data available offline. Please connect to the internet to sync your CATs.");
+          setCurrentPageCATs([]);
+          setPagination(prev => ({
+            ...prev,
+            totalPages: 0,
+            totalCreatorCATs: 0,
+            totalMinterCATs: 0,
+            currentPage: 1,
+          }));
+        }
       }
     } catch (error) {
       console.error("Error initializing pagination:", error);
-      setError("Failed to fetch CATs. Please try again later.");
-      showTransactionToast({
-        hash: "0x0" as `0x${string}`,
-        chainId: config.state.chainId,
-        success: false,
-        message: "Failed to fetch CATs. Please try again later.",
-      });
+      setError(error instanceof Error ? error.message : "Failed to load CATs");
+      toast.error("Failed to load CATs. Please try again.");
     } finally {
       setIsLoading(false);
     }
-     }, [address, pagination.catsPerPage, roleFilter, fetchTotalCounts, fetchCATsForPage]);
+  }, [address, isInitialized, storageError, loadCATsFromStorage, syncWithBlockchain, isOnline, pagination.catsPerPage]);
 
   // Handle page navigation
   const goToPage = useCallback(async (page: number) => {
@@ -537,16 +808,73 @@ export default function MyCATsPage() {
               >
                 My CATs
               </motion.h1>
-              <Link href="/create">
-                <motion.button
-                  className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-300 dark:from-[#FFD600] dark:to-yellow-100 text-black rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <Plus className="w-5 h-5" />
-                  <span>Create New CAT</span>
-                </motion.button>
-              </Link>
+
+              <div className="flex flex-col md:flex-row items-center gap-4">
+                {/* Status and Sync Controls */}
+                <div className="flex items-center gap-3">
+                  {/* Online/Offline Status */}
+                  <div className="flex items-center gap-2">
+                    {isOnline ? (
+                      <Wifi className="w-4 h-4 text-green-500" />
+                    ) : (
+                      <WifiOff className="w-4 h-4 text-red-500" />
+                    )}
+                    <span className="text-sm text-gray-600 dark:text-yellow-200">
+                      {isOnline ? 'Online' : 'Offline'}
+                    </span>
+                  </div>
+
+                  {/* Database Status */}
+                  {/* <div className="flex items-center gap-2">
+                    <Database className={`w-4 h-4 ${isInitialized ? 'text-green-500' : 'text-red-500'}`} />
+                    <span className="text-sm text-gray-600 dark:text-yellow-200">
+                      {isInitialized ? 'DB Ready' : 'DB Loading'}
+                    </span>
+                  </div> */}
+
+                  {/* Sync Button */}
+                  {isInitialized && (
+                    <motion.button
+                      onClick={handleManualSync}
+                      disabled={!isOnline || isSyncing}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all duration-300 disabled:opacity-50 ${
+                        isOnline 
+                          ? 'bg-blue-500/20 dark:bg-yellow-400/20 text-blue-600 dark:text-yellow-400 hover:bg-blue-500/30 dark:hover:bg-yellow-400/30' 
+                          : 'bg-gray-500/20 text-gray-500 dark:text-gray-400 cursor-not-allowed'
+                      }`}
+                      whileHover={{ scale: (!isOnline || isSyncing) ? 1 : 1.05 }}
+                      whileTap={{ scale: (!isOnline || isSyncing) ? 1 : 0.95 }}
+                      title={!isOnline ? 'Cannot sync while offline' : 'Sync with blockchain'}
+                    >
+                      <motion.div
+                        animate={isSyncing ? { rotate: 360 } : {}}
+                        transition={isSyncing ? { duration: 1, repeat: Infinity, ease: "linear" } : {}}
+                      >
+                        <Database className="w-4 h-4" />
+                      </motion.div>
+                      <span>{isSyncing ? 'Syncing...' : !isOnline ? 'Offline' : 'Sync'}</span>
+                    </motion.button>
+                  )}
+
+                  {/* Last Sync Time */}
+                  {lastSyncTime && (
+                    <span className="text-xs text-gray-500 dark:text-yellow-200/70">
+                      Last sync: {lastSyncTime.toLocaleTimeString()}
+                    </span>
+                  )}
+                </div>
+
+                <Link href="/create">
+                  <motion.button
+                    className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-300 dark:from-[#FFD600] dark:to-yellow-100 text-black rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <Plus className="w-5 h-5" />
+                    <span>Create New CAT</span>
+                  </motion.button>
+                </Link>
+              </div>
             </div>
 
             {/* Search and Filter Section */}
@@ -628,6 +956,35 @@ export default function MyCATsPage() {
                 </motion.button>
               </motion.div>
             )}
+
+            {/* Offline Banner */}
+            <AnimatePresence>
+              {!isOnline && currentPageCATs.length === 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: -20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.3, ease: "easeOut" }}
+                  className="mb-6"
+                >
+                  <div className="bg-gradient-to-r from-orange-50/90 to-red-50/90 dark:from-yellow-900/80 dark:to-amber-900/80 backdrop-blur-sm rounded-2xl border-2 border-orange-200/60 dark:border-yellow-400/40 p-6 shadow-lg">
+                    <div className="flex items-center justify-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-400 to-red-500 dark:from-red-500 dark:to-red-600 flex items-center justify-center shadow-lg">
+                        <WifiOff className="h-6 w-6 text-white" />
+                      </div>
+                      <div className="text-center">
+                        <h3 className="text-lg font-bold text-orange-800 dark:text-yellow-200">
+                          You're Offline
+                        </h3>
+                        <p className="text-sm text-orange-600 dark:text-yellow-300">
+                          No cached CATs available. Please connect to the internet to sync your data.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             <div className="max-w-6xl mx-auto px-4 text-center mt-18">
             {isLoading ? (
