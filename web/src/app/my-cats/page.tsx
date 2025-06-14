@@ -77,7 +77,7 @@ export default function MyCATsPage() {
     totalPages: 0,
     totalCreatorCATs: 0,
     totalMinterCATs: 0,
-    catsPerPage: 3,
+    catsPerPage: 6,
   });
   const [isOnline, setIsOnline] = useState(true);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
@@ -374,58 +374,6 @@ export default function MyCATsPage() {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [isOnline, address, syncWithBlockchain]);
-
-  // Calculate total counts for pagination
-  const fetchTotalCounts = useCallback(async (): Promise<{totalCreatorCATs: number, totalMinterCATs: number}> => {
-    if (!address) return { totalCreatorCATs: 0, totalMinterCATs: 0 };
-
-    try {
-      let totalCreatorCATs = 0;
-      let totalMinterCATs = 0;
-
-      const chainPromises = Object.entries(ClowderVaultFactories)
-        .filter(([chainId]) => isValidChainId(chainId))
-        .map(async ([chainId, factoryAddress]) => {
-          const publicClient = getPublicClient(config, { chainId: Number(chainId) as SupportedChainId });
-          
-          if (!publicClient) return { creatorCount: 0, minterCount: 0 };
-
-          try {
-            const [creatorCount, minterCount] = await Promise.all([
-              publicClient.readContract({
-                address: factoryAddress as `0x${string}`,
-                abi: CAT_FACTORY_ABI,
-                functionName: "getCreatorCATCount",
-                args: [address as `0x${string}`],
-              }) as Promise<bigint>,
-              publicClient.readContract({
-                address: factoryAddress as `0x${string}`,
-                abi: CAT_FACTORY_ABI,
-                functionName: "getMinterCATCount",
-                args: [address as `0x${string}`],
-              }) as Promise<bigint>
-            ]);
-
-            return { creatorCount: Number(creatorCount), minterCount: Number(minterCount) };
-          } catch (error) {
-            console.error(`Error fetching counts for chain ${chainId}:`, error);
-            return { creatorCount: 0, minterCount: 0 };
-          }
-        });
-
-      const results = await Promise.all(chainPromises);
-      
-      results.forEach(({ creatorCount, minterCount }) => {
-        totalCreatorCATs += creatorCount;
-        totalMinterCATs += minterCount;
-      });
-
-      return { totalCreatorCATs, totalMinterCATs };
-    } catch (error) {
-      console.error("Error fetching total counts:", error);
-      return { totalCreatorCATs: 0, totalMinterCATs: 0 };
-    }
-  }, [address]);
 
   // Fetch CATs for a specific page using storage-first approach
   const fetchCATsForPage = useCallback(async (page: number): Promise<CatDetails[]> => {
