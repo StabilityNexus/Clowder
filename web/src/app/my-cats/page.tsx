@@ -18,6 +18,7 @@ import { CatRoleDropdown } from "../../components/CatRoleDropdown";
 import { useCATStorage } from "@/hooks/useCATStorage";
 import { SupportedChainId, CatDetails as StoredCatDetails } from "@/utils/indexedDB";
 import toast from "react-hot-toast";
+import { useRouter, useSearchParams } from "next/navigation";
 
 // Define supported chain IDs - use the imported type from IndexedDB
 // type SupportedChainId = 137 | 534351 | 5115 | 61 | 8453;
@@ -76,7 +77,7 @@ export default function MyCATsPage() {
     totalPages: 0,
     totalCreatorCATs: 0,
     totalMinterCATs: 0,
-    catsPerPage: 6,
+    catsPerPage: 3,
   });
   const [isOnline, setIsOnline] = useState(true);
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
@@ -84,6 +85,8 @@ export default function MyCATsPage() {
   
   const { address } = useAccount();
   const currentChainId = useChainId();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const {
     getAllCatDetailsForUser,
     getCatDetailsByRole,
@@ -316,6 +319,62 @@ export default function MyCATsPage() {
     }
   }, [address, isOnline, syncWithBlockchain]);
 
+  // Listen for CAT creation events and auto-sync
+  useEffect(() => {
+    const handleCatCreated = async (event: Event) => {
+      const customEvent = event as CustomEvent;
+      console.log('CAT created event received:', customEvent.detail);
+      
+      if (isOnline && address) {
+        toast.success('New CAT detected! Syncing...');
+        await syncWithBlockchain(true);
+      }
+    };
+
+    const handleWindowFocus = async () => {
+      // Check if a CAT was created while away
+      const catCreatedData = localStorage.getItem('catCreated');
+      if (catCreatedData && isOnline && address) {
+        try {
+          const data = JSON.parse(catCreatedData);
+          const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
+          
+          // Only sync if the CAT was created recently (within 5 minutes)
+          if (data.timestamp > fiveMinutesAgo) {
+            console.log('Recent CAT creation detected on focus, syncing...');
+            toast.success('Syncing new CAT data...');
+            await syncWithBlockchain(true);
+            localStorage.removeItem('catCreated'); // Clear the flag
+          }
+        } catch (error) {
+          console.error('Error parsing CAT creation data:', error);
+        }
+      }
+    };
+
+    const handleVisibilityChange = async () => {
+      if (!document.hidden) {
+        // Page became visible, check for new CATs
+        await handleWindowFocus();
+      }
+    };
+
+    // Listen for custom CAT creation events
+    window.addEventListener('catCreated', handleCatCreated);
+    
+    // Listen for window focus to sync when returning to the page
+    window.addEventListener('focus', handleWindowFocus);
+    
+    // Listen for page visibility changes (tab switches)
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      window.removeEventListener('catCreated', handleCatCreated);
+      window.removeEventListener('focus', handleWindowFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isOnline, address, syncWithBlockchain]);
+
   // Calculate total counts for pagination
   const fetchTotalCounts = useCallback(async (): Promise<{totalCreatorCATs: number, totalMinterCATs: number}> => {
     if (!address) return { totalCreatorCATs: 0, totalMinterCATs: 0 };
@@ -368,171 +427,186 @@ export default function MyCATsPage() {
     }
   }, [address]);
 
-  // Fetch CATs for a specific page
+  // Fetch CATs for a specific page using storage-first approach
   const fetchCATsForPage = useCallback(async (page: number): Promise<CatDetails[]> => {
-    if (!address) return [];
-
-    const catsPerPage = pagination.catsPerPage;
-    const startIndex = (page - 1) * catsPerPage;
+    if (!address || !isInitialized) return [];
 
     try {
-      // Get counts first
-      const { totalCreatorCATs, } = await fetchTotalCounts();
-
-      const catsToFetch: CatDetails[] = [];
-      let remainingToFetch = catsPerPage;
-      let currentGlobalIndex = startIndex;
-
-             // Apply role filter when fetching CATs
-       if (roleFilter === "creator" || roleFilter === "all") {
-         // First, try to get creator CATs
-         if (currentGlobalIndex < totalCreatorCATs && remainingToFetch > 0) {
-           const creatorStartIndex = currentGlobalIndex;
-           const creatorEndIndex = Math.min(creatorStartIndex + remainingToFetch, totalCreatorCATs);
-           const creatorCatsNeeded = creatorEndIndex - creatorStartIndex;
-
-           if (creatorCatsNeeded > 0) {
-             const creatorCATs = await fetchCreatorCATs(creatorStartIndex, creatorEndIndex);
-             catsToFetch.push(...creatorCATs);
-             remainingToFetch -= creatorCATs.length;
-             currentGlobalIndex += creatorCATs.length;
-           }
-         }
-       }
-
-       if (roleFilter === "minter" || roleFilter === "all") {
-         // Then, get minter CATs if we need more and haven't finished with creator CATs
-         if (remainingToFetch > 0 && (currentGlobalIndex >= totalCreatorCATs || roleFilter === "minter")) {
-           const minterStartIndex = roleFilter === "minter" ? currentGlobalIndex : currentGlobalIndex - totalCreatorCATs;
-           const minterEndIndex = minterStartIndex + remainingToFetch;
-
-           const minterCATs = await fetchMinterCATs(minterStartIndex, minterEndIndex);
-           catsToFetch.push(...minterCATs);
-         }
-       }
-
-      return catsToFetch;
+      // Load all filtered CATs from storage
+      const allStoredCATs = await loadCATsFromStorage();
+      
+      // Calculate pagination indices
+      const catsPerPage = pagination.catsPerPage;
+      const startIndex = (page - 1) * catsPerPage;
+      const endIndex = startIndex + catsPerPage;
+      
+      // Return the page slice
+      return allStoredCATs.slice(startIndex, endIndex);
     } catch (error) {
-      console.error("Error fetching CATs for page:", error);
+      console.error("Error fetching CATs for page from storage:", error);
       return [];
     }
-     }, [address, pagination.catsPerPage, roleFilter, fetchTotalCounts]);
+  }, [address, isInitialized, loadCATsFromStorage, pagination.catsPerPage]);
 
-  const fetchCreatorCATs = useCallback(async (startIndex: number, endIndex: number): Promise<CatDetails[]> => {
-    if (!address) return [];
+  // Handle page navigation with storage-first approach
+  const goToPage = useCallback(async (page: number) => {
+    if (page < 1 || page > pagination.totalPages || page === pagination.currentPage) return;
 
     try {
-      const allCreatorCATs: CatDetails[] = [];
-      let currentStart = startIndex;
-      let currentEnd = endIndex;
+      setIsLoading(true);
+      
+      // Load page data from storage
+      const pageCATs = await fetchCATsForPage(page);
+      setCurrentPageCATs(pageCATs);
+      setPagination(prev => ({ ...prev, currentPage: page }));
+    } catch (error) {
+      console.error("Error navigating to page:", error);
+      setError("Failed to load page. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [pagination.totalPages, pagination.currentPage, fetchCATsForPage]);
 
-      for (const [chainId, factoryAddress] of Object.entries(ClowderVaultFactories)) {
-        if (!isValidChainId(chainId)) continue;
+  const goToPreviousPage = () => goToPage(pagination.currentPage - 1);
+  const goToNextPage = () => goToPage(pagination.currentPage + 1);
 
-        const publicClient = getPublicClient(config, { chainId: Number(chainId) as SupportedChainId });
-        if (!publicClient) continue;
+  // Filter and search function
+  const filteredCATs = currentPageCATs?.filter((cat) => {
+    const matchesSearch = searchQuery === "" || 
+      cat.tokenName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      cat.tokenSymbol.toLowerCase().includes(searchQuery.toLowerCase());
+    
+    const matchesChain = selectedChainId === "all" || cat.chainId === Number(selectedChainId);
+    
+    const matchesRole = roleFilter === "all" || 
+      (roleFilter === "creator" && cat.userRole === "admin") ||
+      (roleFilter === "minter" && cat.userRole === "minter");
+    
+    return matchesSearch && matchesChain && matchesRole;
+  });
 
-        try {
-          // Get count for this chain
-          const chainCreatorCount = await publicClient.readContract({
-            address: factoryAddress as `0x${string}`,
-            abi: CAT_FACTORY_ABI,
-            functionName: "getCreatorCATCount",
-            args: [address as `0x${string}`],
-          }) as bigint;
+  // Initialize pagination with IndexedDB integration (offline-first approach)
+  const initializePagination = useCallback(async () => {
+    if (!address || !isInitialized) {
+      setIsLoading(false);
+      return;
+    }
 
-          const chainCount = Number(chainCreatorCount);
+    try {
+      setIsLoading(true);
+      setError(storageError);
 
-          if (currentStart < chainCount && currentEnd > 0) {
-            const chainStart = Math.max(0, currentStart);
-            const chainEnd = Math.min(chainCount, currentEnd);
+      // First, try to load from IndexedDB (offline-first)
+      const storedCATs = await loadCATsFromStorage();
+      
+      if (storedCATs.length > 0) {
+        // Calculate pagination from stored data
+        const totalCATs = storedCATs.length;
+        const creatorCount = storedCATs.filter(cat => cat.userRole === 'admin').length;
+        const minterCount = storedCATs.filter(cat => cat.userRole === 'minter').length;
+        const totalPages = Math.ceil(totalCATs / pagination.catsPerPage);
+        
+        setPagination(prev => ({
+          ...prev,
+          totalPages,
+          totalCreatorCATs: creatorCount,
+          totalMinterCATs: minterCount,
+          currentPage: 1,
+        }));
 
-            if (chainEnd > chainStart) {
-              const addresses = await publicClient.readContract({
-                address: factoryAddress as `0x${string}`,
-                abi: CAT_FACTORY_ABI,
-                functionName: "getCreatorCATAddresses",
-                args: [address as `0x${string}`, BigInt(chainStart), BigInt(chainEnd)],
-              }) as `0x${string}`[];
+        // Show first page from stored data
+        const startIndex = 0;
+        const endIndex = pagination.catsPerPage;
+        setCurrentPageCATs(storedCATs.slice(startIndex, endIndex));
+        
+        // Show data immediately from storage
+        setIsLoading(false);
+        
+        // Then sync with blockchain in background if online
+        if (isOnline) {
+          syncWithBlockchain(false).then(async () => {
+            // Refresh data after successful sync
+            const refreshedCATs = await loadCATsFromStorage();
+            if (refreshedCATs.length !== storedCATs.length) {
+              // Data changed, refresh the display
+              const newTotalCATs = refreshedCATs.length;
+              const newCreatorCount = refreshedCATs.filter(cat => cat.userRole === 'admin').length;
+              const newMinterCount = refreshedCATs.filter(cat => cat.userRole === 'minter').length;
+              const newTotalPages = Math.ceil(newTotalCATs / pagination.catsPerPage);
+              
+              setPagination(prev => ({
+                ...prev,
+                totalPages: newTotalPages,
+                totalCreatorCATs: newCreatorCount,
+                totalMinterCATs: newMinterCount,
+              }));
 
-              const chainCATs = await fetchCATDetails(addresses, Number(chainId) as SupportedChainId, 'admin');
-              allCreatorCATs.push(...chainCATs);
+              const newStartIndex = 0;
+              const newEndIndex = pagination.catsPerPage;
+              setCurrentPageCATs(refreshedCATs.slice(newStartIndex, newEndIndex));
             }
-          }
+          }).catch(console.error);
+        }
+      } else {
+        // No stored data, must fetch from blockchain
+        if (isOnline) {
+          await syncWithBlockchain(true); // Force sync
+          // Reload from storage after sync
+          const newStoredCATs = await loadCATsFromStorage();
+          
+          const totalCATs = newStoredCATs.length;
+          const creatorCount = newStoredCATs.filter(cat => cat.userRole === 'admin').length;
+          const minterCount = newStoredCATs.filter(cat => cat.userRole === 'minter').length;
+          const totalPages = Math.ceil(totalCATs / pagination.catsPerPage);
+          
+          setPagination(prev => ({
+            ...prev,
+            totalPages,
+            totalCreatorCATs: creatorCount,
+            totalMinterCATs: minterCount,
+            currentPage: 1,
+          }));
 
-          currentStart = Math.max(0, currentStart - chainCount);
-          currentEnd = Math.max(0, currentEnd - chainCount);
-
-          if (currentEnd <= 0) break;
-        } catch (error) {
-          console.error(`Error fetching creator CATs for chain ${chainId}:`, error);
+          const startIndex = 0;
+          const endIndex = pagination.catsPerPage;
+          setCurrentPageCATs(newStoredCATs.slice(startIndex, endIndex));
+        } else {
+          setError("No data available offline. Please connect to the internet to sync your CATs.");
+          setCurrentPageCATs([]);
+          setPagination(prev => ({
+            ...prev,
+            totalPages: 0,
+            totalCreatorCATs: 0,
+            totalMinterCATs: 0,
+            currentPage: 1,
+          }));
         }
       }
-
-      return allCreatorCATs;
     } catch (error) {
-      console.error("Error fetching creator CATs:", error);
-      return [];
+      console.error("Error initializing pagination:", error);
+      setError(error instanceof Error ? error.message : "Failed to load CATs");
+      toast.error("Failed to load CATs. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
-  }, [address]);
+  }, [address, isInitialized, storageError, loadCATsFromStorage, syncWithBlockchain, isOnline, pagination.catsPerPage]);
 
-  const fetchMinterCATs = useCallback(async (startIndex: number, endIndex: number): Promise<CatDetails[]> => {
-    if (!address) return [];
+  useEffect(() => {
+    initializePagination();
+  }, [initializePagination]);
 
-    try {
-      const allMinterCATs: CatDetails[] = [];
-      let currentStart = startIndex;
-      let currentEnd = endIndex;
-
-      for (const [chainId, factoryAddress] of Object.entries(ClowderVaultFactories)) {
-        if (!isValidChainId(chainId)) continue;
-
-        const publicClient = getPublicClient(config, { chainId: Number(chainId) as SupportedChainId });
-        if (!publicClient) continue;
-
-        try {
-          // Get count for this chain
-          const chainMinterCount = await publicClient.readContract({
-            address: factoryAddress as `0x${string}`,
-            abi: CAT_FACTORY_ABI,
-            functionName: "getMinterCATCount",
-            args: [address as `0x${string}`],
-          }) as bigint;
-
-          const chainCount = Number(chainMinterCount);
-
-          if (currentStart < chainCount && currentEnd > 0) {
-            const chainStart = Math.max(0, currentStart);
-            const chainEnd = Math.min(chainCount, currentEnd);
-
-            if (chainEnd > chainStart) {
-              const addresses = await publicClient.readContract({
-                address: factoryAddress as `0x${string}`,
-                abi: CAT_FACTORY_ABI,
-                functionName: "getMinterCATAddresses",
-                args: [address as `0x${string}`, BigInt(chainStart), BigInt(chainEnd)],
-              }) as `0x${string}`[];
-
-              const chainCATs = await fetchCATDetails(addresses, Number(chainId) as SupportedChainId, 'minter');
-              allMinterCATs.push(...chainCATs);
-            }
-          }
-
-          currentStart = Math.max(0, currentStart - chainCount);
-          currentEnd = Math.max(0, currentEnd - chainCount);
-
-          if (currentEnd <= 0) break;
-        } catch (error) {
-          console.error(`Error fetching minter CATs for chain ${chainId}:`, error);
-        }
-      }
-
-      return allMinterCATs;
-    } catch (error) {
-      console.error("Error fetching minter CATs:", error);
-      return [];
+  // Handle sync URL parameter from create page redirect
+  useEffect(() => {
+    const shouldSync = searchParams.get('sync');
+    if (shouldSync === 'true' && isOnline && address && isInitialized) {
+      console.log('Sync parameter detected, triggering immediate sync...');
+      toast.success('Welcome back! Syncing your new CAT...');
+      syncWithBlockchain(true).then(() => {
+        // Clear the sync parameter from URL
+        router.replace('/my-cats', { scroll: false });
+      }).catch(console.error);
     }
-  }, [address]);
+  }, [searchParams, isOnline, address, isInitialized, syncWithBlockchain, router]);
 
   // Helper function to add delays between requests
   const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -643,151 +717,6 @@ export default function MyCATsPage() {
       return [];
     }
   }, []);
-
-  // Initialize pagination with IndexedDB integration (offline-first approach)
-  const initializePagination = useCallback(async () => {
-    if (!address || !isInitialized) {
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      setError(storageError);
-
-      // First, try to load from IndexedDB (offline-first)
-      const storedCATs = await loadCATsFromStorage();
-      
-      if (storedCATs.length > 0) {
-        // Calculate pagination from stored data
-        const totalCATs = storedCATs.length;
-        const creatorCount = storedCATs.filter(cat => cat.userRole === 'admin').length;
-        const minterCount = storedCATs.filter(cat => cat.userRole === 'minter').length;
-        const totalPages = Math.ceil(totalCATs / pagination.catsPerPage);
-        
-        setPagination(prev => ({
-          ...prev,
-          totalPages,
-          totalCreatorCATs: creatorCount,
-          totalMinterCATs: minterCount,
-          currentPage: 1,
-        }));
-
-        // Show first page from stored data
-        const startIndex = 0;
-        const endIndex = pagination.catsPerPage;
-        setCurrentPageCATs(storedCATs.slice(startIndex, endIndex));
-        
-        // Show data immediately from storage
-        setIsLoading(false);
-        
-        // Then sync with blockchain in background if online
-        if (isOnline) {
-          syncWithBlockchain(false).then(async () => {
-            // Refresh data after successful sync
-            const refreshedCATs = await loadCATsFromStorage();
-            if (refreshedCATs.length !== storedCATs.length) {
-              // Data changed, refresh the display
-              const newTotalCATs = refreshedCATs.length;
-              const newCreatorCount = refreshedCATs.filter(cat => cat.userRole === 'admin').length;
-              const newMinterCount = refreshedCATs.filter(cat => cat.userRole === 'minter').length;
-              const newTotalPages = Math.ceil(newTotalCATs / pagination.catsPerPage);
-              
-              setPagination(prev => ({
-                ...prev,
-                totalPages: newTotalPages,
-                totalCreatorCATs: newCreatorCount,
-                totalMinterCATs: newMinterCount,
-              }));
-
-              const newStartIndex = 0;
-              const newEndIndex = pagination.catsPerPage;
-              setCurrentPageCATs(refreshedCATs.slice(newStartIndex, newEndIndex));
-            }
-          }).catch(console.error);
-        }
-      } else {
-        // No stored data, must fetch from blockchain
-        if (isOnline) {
-          await syncWithBlockchain(true); // Force sync
-          // Reload from storage after sync
-          const newStoredCATs = await loadCATsFromStorage();
-          
-          const totalCATs = newStoredCATs.length;
-          const creatorCount = newStoredCATs.filter(cat => cat.userRole === 'admin').length;
-          const minterCount = newStoredCATs.filter(cat => cat.userRole === 'minter').length;
-          const totalPages = Math.ceil(totalCATs / pagination.catsPerPage);
-          
-          setPagination(prev => ({
-            ...prev,
-            totalPages,
-            totalCreatorCATs: creatorCount,
-            totalMinterCATs: minterCount,
-            currentPage: 1,
-          }));
-
-          const startIndex = 0;
-          const endIndex = pagination.catsPerPage;
-          setCurrentPageCATs(newStoredCATs.slice(startIndex, endIndex));
-        } else {
-          setError("No data available offline. Please connect to the internet to sync your CATs.");
-          setCurrentPageCATs([]);
-          setPagination(prev => ({
-            ...prev,
-            totalPages: 0,
-            totalCreatorCATs: 0,
-            totalMinterCATs: 0,
-            currentPage: 1,
-          }));
-        }
-      }
-    } catch (error) {
-      console.error("Error initializing pagination:", error);
-      setError(error instanceof Error ? error.message : "Failed to load CATs");
-      toast.error("Failed to load CATs. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [address, isInitialized, storageError, loadCATsFromStorage, syncWithBlockchain, isOnline, pagination.catsPerPage]);
-
-  // Handle page navigation
-  const goToPage = useCallback(async (page: number) => {
-    if (page < 1 || page > pagination.totalPages || page === pagination.currentPage) return;
-
-    try {
-      setIsLoading(true);
-      const pageCATs = await fetchCATsForPage(page);
-      setCurrentPageCATs(pageCATs);
-      setPagination(prev => ({ ...prev, currentPage: page }));
-    } catch (error) {
-      console.error("Error navigating to page:", error);
-      setError("Failed to load page. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [pagination.totalPages, pagination.currentPage, fetchCATsForPage]);
-
-  const goToPreviousPage = () => goToPage(pagination.currentPage - 1);
-  const goToNextPage = () => goToPage(pagination.currentPage + 1);
-
-  useEffect(() => {
-    initializePagination();
-  }, [initializePagination]);
-
-  // Filter and search function
-  const filteredCATs = currentPageCATs?.filter((cat) => {
-    const matchesSearch = searchQuery === "" || 
-      cat.tokenName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      cat.tokenSymbol.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesChain = selectedChainId === "all" || cat.chainId === Number(selectedChainId);
-    
-    const matchesRole = roleFilter === "all" || 
-      (roleFilter === "creator" && cat.userRole === "admin") ||
-      (roleFilter === "minter" && cat.userRole === "minter");
-    
-    return matchesSearch && matchesChain && matchesRole;
-  });
 
   return (
     <Layout>
