@@ -18,7 +18,7 @@ import { CatRoleDropdown } from "../../components/CatRoleDropdown";
 import { useCATStorage } from "@/hooks/useCATStorage";
 import { SupportedChainId, CatDetails as StoredCatDetails } from "@/utils/indexedDB";
 import toast from "react-hot-toast";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 // Define supported chain IDs - use the imported type from IndexedDB
 // type SupportedChainId = 137 | 534351 | 5115 | 61 | 8453;
@@ -87,7 +87,6 @@ export default function MyCATsPage() {
   const { address } = useAccount();
   const currentChainId = useChainId();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const {
     getAllCatDetailsForUser,
     getCatDetailsByRole,
@@ -516,18 +515,7 @@ export default function MyCATsPage() {
     initializePagination();
   }, [initializePagination]);
 
-  // Handle sync URL parameter from create page redirect
-  useEffect(() => {
-    const shouldSync = searchParams.get('sync');
-    if (shouldSync === 'true' && isOnline && address && isInitialized) {
-      console.log('Sync parameter detected, triggering immediate sync...');
-      toast.success('Welcome back! Syncing your new CAT...');
-      syncWithBlockchain(true).then(() => {
-        // Clear the sync parameter from URL
-        router.replace('/my-cats', { scroll: false });
-      }).catch(console.error);
-    }
-  }, [searchParams, isOnline, address, isInitialized, syncWithBlockchain, router]);
+
 
   // Helper function to add delays between requests
   const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
