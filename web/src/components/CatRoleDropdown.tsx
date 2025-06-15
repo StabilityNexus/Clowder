@@ -32,7 +32,7 @@ const ROLE_OPTIONS: RoleOption[] = [
   {
     value: "minter",
     label: "Minter CATs",
-    description: "CATs with minter role only",
+    description: "CATs with minter role",
     icon: <Hammer className="h-4 w-4" />,
     color: "bg-gradient-to-r from-orange-500/20 to-red-500/20"
   }
