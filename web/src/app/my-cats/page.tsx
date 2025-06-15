@@ -74,7 +74,7 @@ export default function MyCATsPage() {
   const [selectedChainId, setSelectedChainId] = useState<SupportedChainId | "all">("all");
   const [roleFilter, setRoleFilter] = useState<"all" | "creator" | "minter">("all");
   const [pagination, setPagination] = useState<PaginationInfo>({
-    currentPage: 1,
+    currentPage: 0,
     totalPages: 0,
     totalCreatorCATs: 0,
     totalMinterCATs: 0,
@@ -388,17 +388,18 @@ export default function MyCATsPage() {
       const creatorCount = filteredCATs.filter(cat => cat.userRole === 'admin').length;
       const minterCount = filteredCATs.filter(cat => cat.userRole === 'minter').length;
       const totalPages = Math.ceil(totalCATs / pagination.catsPerPage);
+      const firstPage = totalPages > 0 ? 1 : 0;
       
       setPagination(prev => ({
         ...prev,
         totalPages,
         totalCreatorCATs: creatorCount,
         totalMinterCATs: minterCount,
-        currentPage: 1, // Reset to first page when filters change
+        currentPage: firstPage, // Reset to first page when filters change
       }));
 
-      // Show first page
-      const firstPageCATs = filteredCATs.slice(0, pagination.catsPerPage);
+      // Show first page - early return with empty slice when no pages
+      const firstPageCATs = totalPages === 0 ? [] : filteredCATs.slice(0, pagination.catsPerPage);
       setCurrentPageCATs(firstPageCATs);
     } catch (error) {
       console.error('Error updating filtered CATs:', error);
@@ -408,15 +409,21 @@ export default function MyCATsPage() {
 
   // Update current page CATs when page changes (without refetching from storage)
   const updateCurrentPageCATs = useCallback((page: number) => {
+    // Early return with empty slice when no pages
+    if (pagination.totalPages === 0 || page <= 0) {
+      setCurrentPageCATs([]);
+      return;
+    }
+    
     const startIndex = (page - 1) * pagination.catsPerPage;
     const endIndex = startIndex + pagination.catsPerPage;
     const pageCATs = allFilteredCATs.slice(startIndex, endIndex);
     setCurrentPageCATs(pageCATs);
-  }, [allFilteredCATs, pagination.catsPerPage]);
+  }, [allFilteredCATs, pagination.catsPerPage, pagination.totalPages]);
 
   // Handle page navigation with cached data
   const goToPage = useCallback((page: number) => {
-    if (page < 1 || page > pagination.totalPages || page === pagination.currentPage) return;
+    if (pagination.totalPages === 0 || page < 1 || page > pagination.totalPages || page === pagination.currentPage) return;
 
     setPagination(prev => ({ ...prev, currentPage: page }));
     updateCurrentPageCATs(page);
@@ -460,17 +467,18 @@ export default function MyCATsPage() {
         const creatorCount = storedCATs.filter(cat => cat.userRole === 'admin').length;
         const minterCount = storedCATs.filter(cat => cat.userRole === 'minter').length;
         const totalPages = Math.ceil(totalCATs / pagination.catsPerPage);
+        const firstPage = totalPages > 0 ? 1 : 0;
         
         setPagination(prev => ({
           ...prev,
           totalPages,
           totalCreatorCATs: creatorCount,
           totalMinterCATs: minterCount,
-          currentPage: 1,
+          currentPage: firstPage,
         }));
 
-        // Show first page from cached data
-        const firstPageCATs = storedCATs.slice(0, pagination.catsPerPage);
+        // Show first page from cached data - early return with empty slice when no pages
+        const firstPageCATs = totalPages === 0 ? [] : storedCATs.slice(0, pagination.catsPerPage);
         setCurrentPageCATs(firstPageCATs);
         
         // Show data immediately from storage
@@ -498,7 +506,7 @@ export default function MyCATsPage() {
             totalPages: 0,
             totalCreatorCATs: 0,
             totalMinterCATs: 0,
-            currentPage: 1,
+            currentPage: 0,
           }));
         }
       }
@@ -764,10 +772,10 @@ export default function MyCATsPage() {
               >
                 <motion.button
                   onClick={goToPreviousPage}
-                  disabled={pagination.currentPage === 1}
+                  disabled={pagination.currentPage <= 1 || pagination.totalPages === 0}
                   className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/80 dark:bg-[#1a1400]/70 border border-[#bfdbfe] dark:border-yellow-400/20 text-gray-800 dark:text-yellow-100 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-50 dark:hover:bg-yellow-400/10 transition-all duration-300"
-                  whileHover={{ scale: pagination.currentPage === 1 ? 1 : 1.05 }}
-                  whileTap={{ scale: pagination.currentPage === 1 ? 1 : 0.95 }}
+                  whileHover={{ scale: (pagination.currentPage <= 1 || pagination.totalPages === 0) ? 1 : 1.05 }}
+                  whileTap={{ scale: (pagination.currentPage <= 1 || pagination.totalPages === 0) ? 1 : 0.95 }}
                 >
                   <ChevronLeft className="w-4 h-4" />
                   <span>Previous</span>
@@ -775,7 +783,7 @@ export default function MyCATsPage() {
 
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-gray-600 dark:text-yellow-200">
-                    Page {pagination.currentPage} of {pagination.totalPages}
+                    {pagination.totalPages === 0 ? 'No pages' : `Page ${pagination.currentPage} of ${pagination.totalPages}`}
                   </span>
                   <span className="text-xs text-gray-500 dark:text-yellow-200/70">
                     ({pagination.totalCreatorCATs + pagination.totalMinterCATs} total CATs)
@@ -784,10 +792,10 @@ export default function MyCATsPage() {
 
                 <motion.button
                   onClick={goToNextPage}
-                  disabled={pagination.currentPage === pagination.totalPages}
+                  disabled={pagination.currentPage >= pagination.totalPages || pagination.totalPages === 0}
                   className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/80 dark:bg-[#1a1400]/70 border border-[#bfdbfe] dark:border-yellow-400/20 text-gray-800 dark:text-yellow-100 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-50 dark:hover:bg-yellow-400/10 transition-all duration-300"
-                  whileHover={{ scale: pagination.currentPage === pagination.totalPages ? 1 : 1.05 }}
-                  whileTap={{ scale: pagination.currentPage === pagination.totalPages ? 1 : 0.95 }}
+                  whileHover={{ scale: (pagination.currentPage >= pagination.totalPages || pagination.totalPages === 0) ? 1 : 1.05 }}
+                  whileTap={{ scale: (pagination.currentPage >= pagination.totalPages || pagination.totalPages === 0) ? 1 : 0.95 }}
                 >
                   <span>Next</span>
                   <ChevronRight className="w-4 h-4" />
