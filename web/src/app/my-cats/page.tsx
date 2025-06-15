@@ -18,7 +18,7 @@ import { CatRoleDropdown } from "../../components/CatRoleDropdown";
 import { useCATStorage } from "@/hooks/useCATStorage";
 import { SupportedChainId, CatDetails as StoredCatDetails } from "@/utils/indexedDB";
 import toast from "react-hot-toast";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 // Define supported chain IDs - use the imported type from IndexedDB
 // type SupportedChainId = 137 | 534351 | 5115 | 61 | 8453;
@@ -67,13 +67,14 @@ const isValidChainId = (
 
 export default function MyCATsPage() {
   const [currentPageCATs, setCurrentPageCATs] = useState<CatDetails[]>([]);
+  const [allFilteredCATs, setAllFilteredCATs] = useState<CatDetails[]>([]); // Cache filtered CATs
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedChainId, setSelectedChainId] = useState<SupportedChainId | "all">("all");
   const [roleFilter, setRoleFilter] = useState<"all" | "creator" | "minter">("all");
   const [pagination, setPagination] = useState<PaginationInfo>({
-    currentPage: 1,
+    currentPage: 0,
     totalPages: 0,
     totalCreatorCATs: 0,
     totalMinterCATs: 0,
@@ -86,7 +87,6 @@ export default function MyCATsPage() {
   const { address } = useAccount();
   const currentChainId = useChainId();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const {
     getAllCatDetailsForUser,
     getCatDetailsByRole,
@@ -375,63 +375,75 @@ export default function MyCATsPage() {
     };
   }, [isOnline, address, syncWithBlockchain]);
 
-  // Fetch CATs for a specific page using storage-first approach
-  const fetchCATsForPage = useCallback(async (page: number): Promise<CatDetails[]> => {
-    if (!address || !isInitialized) return [];
+  // Update filtered CATs and pagination when filters change
+  const updateFilteredCATs = useCallback(async () => {
+    if (!address || !isInitialized) return;
 
     try {
-      // Load all filtered CATs from storage
-      const allStoredCATs = await loadCATsFromStorage();
+      const filteredCATs = await loadCATsFromStorage();
+      setAllFilteredCATs(filteredCATs);
       
-      // Calculate pagination indices
-      const catsPerPage = pagination.catsPerPage;
-      const startIndex = (page - 1) * catsPerPage;
-      const endIndex = startIndex + catsPerPage;
+      // Calculate pagination
+      const totalCATs = filteredCATs.length;
+      const creatorCount = filteredCATs.filter(cat => cat.userRole === 'admin').length;
+      const minterCount = filteredCATs.filter(cat => cat.userRole === 'minter').length;
+      const totalPages = Math.ceil(totalCATs / pagination.catsPerPage);
+      const firstPage = totalPages > 0 ? 1 : 0;
       
-      // Return the page slice
-      return allStoredCATs.slice(startIndex, endIndex);
+      setPagination(prev => ({
+        ...prev,
+        totalPages,
+        totalCreatorCATs: creatorCount,
+        totalMinterCATs: minterCount,
+        currentPage: firstPage, // Reset to first page when filters change
+      }));
+
+      // Show first page - early return with empty slice when no pages
+      const firstPageCATs = totalPages === 0 ? [] : filteredCATs.slice(0, pagination.catsPerPage);
+      setCurrentPageCATs(firstPageCATs);
     } catch (error) {
-      console.error("Error fetching CATs for page from storage:", error);
-      return [];
+      console.error('Error updating filtered CATs:', error);
+      setError('Failed to load CATs. Please try again.');
     }
   }, [address, isInitialized, loadCATsFromStorage, pagination.catsPerPage]);
 
-  // Handle page navigation with storage-first approach
-  const goToPage = useCallback(async (page: number) => {
-    if (page < 1 || page > pagination.totalPages || page === pagination.currentPage) return;
-
-    try {
-      setIsLoading(true);
-      
-      // Load page data from storage
-      const pageCATs = await fetchCATsForPage(page);
-      setCurrentPageCATs(pageCATs);
-      setPagination(prev => ({ ...prev, currentPage: page }));
-    } catch (error) {
-      console.error("Error navigating to page:", error);
-      setError("Failed to load page. Please try again.");
-    } finally {
-      setIsLoading(false);
+  // Update current page CATs when page changes (without refetching from storage)
+  const updateCurrentPageCATs = useCallback((page: number) => {
+    // Early return with empty slice when no pages
+    if (pagination.totalPages === 0 || page <= 0) {
+      setCurrentPageCATs([]);
+      return;
     }
-  }, [pagination.totalPages, pagination.currentPage, fetchCATsForPage]);
+    
+    const startIndex = (page - 1) * pagination.catsPerPage;
+    const endIndex = startIndex + pagination.catsPerPage;
+    const pageCATs = allFilteredCATs.slice(startIndex, endIndex);
+    setCurrentPageCATs(pageCATs);
+  }, [allFilteredCATs, pagination.catsPerPage, pagination.totalPages]);
+
+  // Handle page navigation with cached data
+  const goToPage = useCallback((page: number) => {
+    if (pagination.totalPages === 0 || page < 1 || page > pagination.totalPages || page === pagination.currentPage) return;
+
+    setPagination(prev => ({ ...prev, currentPage: page }));
+    updateCurrentPageCATs(page);
+  }, [pagination.totalPages, pagination.currentPage, updateCurrentPageCATs]);
 
   const goToPreviousPage = () => goToPage(pagination.currentPage - 1);
   const goToNextPage = () => goToPage(pagination.currentPage + 1);
 
-  // Filter and search function
-  const filteredCATs = currentPageCATs?.filter((cat) => {
-    const matchesSearch = searchQuery === "" || 
-      cat.tokenName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      cat.tokenSymbol.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesChain = selectedChainId === "all" || cat.chainId === Number(selectedChainId);
-    
-    const matchesRole = roleFilter === "all" || 
-      (roleFilter === "creator" && cat.userRole === "admin") ||
-      (roleFilter === "minter" && cat.userRole === "minter");
-    
-    return matchesSearch && matchesChain && matchesRole;
-  });
+  // Update filtered CATs when filters change
+  useEffect(() => {
+    updateFilteredCATs();
+  }, [updateFilteredCATs]);
+
+  // Update current page CATs when pagination current page changes
+  useEffect(() => {
+    updateCurrentPageCATs(pagination.currentPage);
+  }, [pagination.currentPage, updateCurrentPageCATs]);
+
+  // Display CATs are now managed in state, no additional filtering needed
+  const filteredCATs = currentPageCATs;
 
   // Initialize pagination with IndexedDB integration (offline-first approach)
   const initializePagination = useCallback(async () => {
@@ -448,24 +460,26 @@ export default function MyCATsPage() {
       const storedCATs = await loadCATsFromStorage();
       
       if (storedCATs.length > 0) {
-        // Calculate pagination from stored data
+        // Cache the filtered CATs and update pagination
+        setAllFilteredCATs(storedCATs);
+        
         const totalCATs = storedCATs.length;
         const creatorCount = storedCATs.filter(cat => cat.userRole === 'admin').length;
         const minterCount = storedCATs.filter(cat => cat.userRole === 'minter').length;
         const totalPages = Math.ceil(totalCATs / pagination.catsPerPage);
+        const firstPage = totalPages > 0 ? 1 : 0;
         
         setPagination(prev => ({
           ...prev,
           totalPages,
           totalCreatorCATs: creatorCount,
           totalMinterCATs: minterCount,
-          currentPage: 1,
+          currentPage: firstPage,
         }));
 
-        // Show first page from stored data
-        const startIndex = 0;
-        const endIndex = pagination.catsPerPage;
-        setCurrentPageCATs(storedCATs.slice(startIndex, endIndex));
+        // Show first page from cached data - early return with empty slice when no pages
+        const firstPageCATs = totalPages === 0 ? [] : storedCATs.slice(0, pagination.catsPerPage);
+        setCurrentPageCATs(firstPageCATs);
         
         // Show data immediately from storage
         setIsLoading(false);
@@ -473,60 +487,26 @@ export default function MyCATsPage() {
         // Then sync with blockchain in background if online
         if (isOnline) {
           syncWithBlockchain(false).then(async () => {
-            // Refresh data after successful sync
-            const refreshedCATs = await loadCATsFromStorage();
-            if (refreshedCATs.length !== storedCATs.length) {
-              // Data changed, refresh the display
-              const newTotalCATs = refreshedCATs.length;
-              const newCreatorCount = refreshedCATs.filter(cat => cat.userRole === 'admin').length;
-              const newMinterCount = refreshedCATs.filter(cat => cat.userRole === 'minter').length;
-              const newTotalPages = Math.ceil(newTotalCATs / pagination.catsPerPage);
-              
-              setPagination(prev => ({
-                ...prev,
-                totalPages: newTotalPages,
-                totalCreatorCATs: newCreatorCount,
-                totalMinterCATs: newMinterCount,
-              }));
-
-              const newStartIndex = 0;
-              const newEndIndex = pagination.catsPerPage;
-              setCurrentPageCATs(refreshedCATs.slice(newStartIndex, newEndIndex));
-            }
+            // Refresh data after successful sync by triggering updateFilteredCATs
+            await updateFilteredCATs();
           }).catch(console.error);
         }
       } else {
         // No stored data, must fetch from blockchain
         if (isOnline) {
           await syncWithBlockchain(true); // Force sync
-          // Reload from storage after sync
-          const newStoredCATs = await loadCATsFromStorage();
-          
-          const totalCATs = newStoredCATs.length;
-          const creatorCount = newStoredCATs.filter(cat => cat.userRole === 'admin').length;
-          const minterCount = newStoredCATs.filter(cat => cat.userRole === 'minter').length;
-          const totalPages = Math.ceil(totalCATs / pagination.catsPerPage);
-          
-          setPagination(prev => ({
-            ...prev,
-            totalPages,
-            totalCreatorCATs: creatorCount,
-            totalMinterCATs: minterCount,
-            currentPage: 1,
-          }));
-
-          const startIndex = 0;
-          const endIndex = pagination.catsPerPage;
-          setCurrentPageCATs(newStoredCATs.slice(startIndex, endIndex));
+          // Trigger update after sync
+          await updateFilteredCATs();
         } else {
           setError("No data available offline. Please connect to the internet to sync your CATs.");
+          setAllFilteredCATs([]);
           setCurrentPageCATs([]);
           setPagination(prev => ({
             ...prev,
             totalPages: 0,
             totalCreatorCATs: 0,
             totalMinterCATs: 0,
-            currentPage: 1,
+            currentPage: 0,
           }));
         }
       }
@@ -537,24 +517,13 @@ export default function MyCATsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [address, isInitialized, storageError, loadCATsFromStorage, syncWithBlockchain, isOnline, pagination.catsPerPage]);
+  }, [address, isInitialized, storageError, loadCATsFromStorage, syncWithBlockchain, isOnline, pagination.catsPerPage, updateFilteredCATs]);
 
   useEffect(() => {
     initializePagination();
   }, [initializePagination]);
 
-  // Handle sync URL parameter from create page redirect
-  useEffect(() => {
-    const shouldSync = searchParams.get('sync');
-    if (shouldSync === 'true' && isOnline && address && isInitialized) {
-      console.log('Sync parameter detected, triggering immediate sync...');
-      toast.success('Welcome back! Syncing your new CAT...');
-      syncWithBlockchain(true).then(() => {
-        // Clear the sync parameter from URL
-        router.replace('/my-cats', { scroll: false });
-      }).catch(console.error);
-    }
-  }, [searchParams, isOnline, address, isInitialized, syncWithBlockchain, router]);
+
 
   // Helper function to add delays between requests
   const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -803,10 +772,10 @@ export default function MyCATsPage() {
               >
                 <motion.button
                   onClick={goToPreviousPage}
-                  disabled={pagination.currentPage === 1}
+                  disabled={pagination.currentPage <= 1 || pagination.totalPages === 0}
                   className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/80 dark:bg-[#1a1400]/70 border border-[#bfdbfe] dark:border-yellow-400/20 text-gray-800 dark:text-yellow-100 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-50 dark:hover:bg-yellow-400/10 transition-all duration-300"
-                  whileHover={{ scale: pagination.currentPage === 1 ? 1 : 1.05 }}
-                  whileTap={{ scale: pagination.currentPage === 1 ? 1 : 0.95 }}
+                  whileHover={{ scale: (pagination.currentPage <= 1 || pagination.totalPages === 0) ? 1 : 1.05 }}
+                  whileTap={{ scale: (pagination.currentPage <= 1 || pagination.totalPages === 0) ? 1 : 0.95 }}
                 >
                   <ChevronLeft className="w-4 h-4" />
                   <span>Previous</span>
@@ -814,7 +783,7 @@ export default function MyCATsPage() {
 
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-gray-600 dark:text-yellow-200">
-                    Page {pagination.currentPage} of {pagination.totalPages}
+                    {pagination.totalPages === 0 ? 'No pages' : `Page ${pagination.currentPage} of ${pagination.totalPages}`}
                   </span>
                   <span className="text-xs text-gray-500 dark:text-yellow-200/70">
                     ({pagination.totalCreatorCATs + pagination.totalMinterCATs} total CATs)
@@ -823,10 +792,10 @@ export default function MyCATsPage() {
 
                 <motion.button
                   onClick={goToNextPage}
-                  disabled={pagination.currentPage === pagination.totalPages}
+                  disabled={pagination.currentPage >= pagination.totalPages || pagination.totalPages === 0}
                   className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/80 dark:bg-[#1a1400]/70 border border-[#bfdbfe] dark:border-yellow-400/20 text-gray-800 dark:text-yellow-100 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-50 dark:hover:bg-yellow-400/10 transition-all duration-300"
-                  whileHover={{ scale: pagination.currentPage === pagination.totalPages ? 1 : 1.05 }}
-                  whileTap={{ scale: pagination.currentPage === pagination.totalPages ? 1 : 0.95 }}
+                  whileHover={{ scale: (pagination.currentPage >= pagination.totalPages || pagination.totalPages === 0) ? 1 : 1.05 }}
+                  whileTap={{ scale: (pagination.currentPage >= pagination.totalPages || pagination.totalPages === 0) ? 1 : 0.95 }}
                 >
                   <span>Next</span>
                   <ChevronRight className="w-4 h-4" />
@@ -889,7 +858,7 @@ export default function MyCATsPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.5, delay: index * 0.1 }}
                   >
-                    <div className="absolute inset-0 bg-gradient-to-r from-[#93c5fd]/30 to-[#60a5fa]/30 dark:from-yellow-400/20 dark:to-blue-400/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-300"></div>
+                    <div className="absolute inset-0 bg-gradient-to-r from-[#93c5fd]/30 to-[#60a5fa]/30 dark:from-yellow-400/20 dark:to-yellow-400/20 rounded-2xl blur-xl group-hover:blur-2xl transition-all duration-300"></div>
                     <motion.div
                       className="relative rounded-2xl p-8 bg-white/80 dark:bg-[#1a1400]/70 border border-[#bfdbfe] dark:border-yellow-400/20 backdrop-blur-lg transition-all duration-300 hover:scale-105 hover:shadow-[0_8px_32px_0_rgba(37,99,235,0.25)] dark:hover:shadow-[0_8px_32px_0_rgba(255,217,0,0.25)] hover:border-blue-300 dark:hover:border-yellow-400"
                       whileHover={{ y: -8 }}
@@ -897,11 +866,9 @@ export default function MyCATsPage() {
                     >
                       <div className="relative z-10 flex flex-col">
                         <div className="flex items-center justify-between mb-6">
-                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-300 dark:from-[#FFD600] dark:to-blue-400 flex items-center justify-center text-white font-bold text-xl">
-                            {cat.tokenSymbol.slice(0, 2)}
-                          </div>
+                          
                           <div className="flex-1 text-center px-4">
-                            <h2 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-blue-300 dark:from-[#FFD600] dark:to-blue-400">
+                            <h2 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-blue-300 dark:from-[#FFD600] dark:to-white">
                               {cat.tokenName || cat.address}
                             </h2>
                             <p className="text-sm text-[#1e40af] dark:text-yellow-100">
