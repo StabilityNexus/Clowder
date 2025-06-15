@@ -18,7 +18,6 @@ import { CatRoleDropdown } from "../../components/CatRoleDropdown";
 import { useCATStorage } from "@/hooks/useCATStorage";
 import { SupportedChainId, CatDetails as StoredCatDetails } from "@/utils/indexedDB";
 import toast from "react-hot-toast";
-import { useRouter } from "next/navigation";
 
 // Define supported chain IDs - use the imported type from IndexedDB
 // type SupportedChainId = 137 | 534351 | 5115 | 61 | 8453;
@@ -86,7 +85,6 @@ export default function MyCATsPage() {
   
   const { address } = useAccount();
   const currentChainId = useChainId();
-  const router = useRouter();
   const {
     getAllCatDetailsForUser,
     getCatDetailsByRole,
