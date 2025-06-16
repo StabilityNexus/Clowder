@@ -245,38 +245,6 @@ export default function Home() {
               viewport={{ once: true }}
             >
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 relative">
-                {/* Enhanced Flow arrows for desktop */}
-                <motion.div 
-                  className="hidden lg:block absolute top-1/2 left-1/3 w-12 h-0.5 bg-gradient-to-r from-blue-400 via-purple-400 to-blue-500 dark:from-yellow-400 dark:via-yellow-500 dark:to-yellow-600 transform -translate-y-1/2 shadow-sm"
-                  initial={{ scaleX: 0 }}
-                  whileInView={{ scaleX: 1 }}
-                  transition={{ duration: 0.6, delay: 1.2 }}
-                  viewport={{ once: true }}
-                >
-                  <motion.div 
-                    className="absolute -right-2 -top-1.5 w-4 h-4 border-r-2 border-t-2 border-blue-500 dark:border-yellow-500 transform rotate-45"
-                    initial={{ opacity: 0, x: -10 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.4, delay: 1.8 }}
-                    viewport={{ once: true }}
-                  ></motion.div>
-                </motion.div>
-                <motion.div 
-                  className="hidden lg:block absolute top-1/2 left-2/3 w-12 h-0.5 bg-gradient-to-r from-blue-400 via-purple-400 to-blue-500 dark:from-yellow-400 dark:via-yellow-500 dark:to-yellow-600 transform -translate-y-1/2 shadow-sm"
-                  initial={{ scaleX: 0 }}
-                  whileInView={{ scaleX: 1 }}
-                  transition={{ duration: 0.6, delay: 1.4 }}
-                  viewport={{ once: true }}
-                >
-                  <motion.div 
-                    className="absolute -right-2 -top-1.5 w-4 h-4 border-r-2 border-t-2 border-blue-500 dark:border-yellow-500 transform rotate-45"
-                    initial={{ opacity: 0, x: -10 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    transition={{ duration: 0.4, delay: 2.0 }}
-                    viewport={{ once: true }}
-                  ></motion.div>
-                </motion.div>
-
                 {[
                   {
                     step: "01",
@@ -386,22 +354,22 @@ export default function Home() {
                     {
                       title: "Open Source Projects",
                       explanation: "Reward developers for coding, bug fixing, documentation, and improving the projects impact.",
-                      gradient: "from-green-400 to-blue-500"
+                      gradient: "from-blue-500 to-blue-600 dark:from-yellow-400 dark:to-yellow-500"
                     },
                     {
                       title: "Creative Collaboratives",
                       explanation: "Artists, musicians, and content creators can fairly share ownership according to their creative input and effort.",
-                      gradient: "from-pink-400 to-purple-500"
+                      gradient: "from-blue-500 to-blue-600 dark:from-yellow-500 dark:to-yellow-600"
                     },
                     {
                       title: "Event Management",
                       explanation: "Recognize and reward event organizers, volunteers, and promoters for making events successful and engaging.",
-                      gradient: "from-cyan-400 to-sky-500"
+                      gradient: "from-blue-500 to-blue-600 dark:from-yellow-400 dark:to-yellow-500"
                     },
                     {
                       title: "Community DAOs",
                       explanation: "Give community members fair governance rights and influence based on their active participation and contributions.",
-                      gradient: "from-teal-400 to-emerald-500"
+                      gradient: "from-blue-500 to-blue-600 dark:from-yellow-500 dark:to-yellow-600"
                     }
                   ].map((useCase, index) => (
                   <motion.div

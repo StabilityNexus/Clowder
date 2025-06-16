@@ -70,7 +70,16 @@ export default function InteractionClient() {
   const formatNumber = (num: number, decimals: number = 4): string => {
     if (num === 0) return "0";
     if (num < 0.0001) return num.toExponential(2);
-    return num.toFixed(decimals);
+    
+    // Format with specified decimals
+    const formatted = num.toFixed(decimals);
+    
+    // Remove trailing zeros after decimal point
+    if (formatted.includes('.')) {
+      return formatted.replace(/\.?0+$/, '');
+    }
+    
+    return formatted;
   };
   
   const [isLoading, setIsLoading] = useState(true);
@@ -539,11 +548,13 @@ export default function InteractionClient() {
     try {
       await fetchTokenDetailsFromBlockchain();
       toast.success('Token details synced successfully');
+      // Force re-initialization to refresh all data
+      await initializeTokenDetails();
     } catch (error) {
       console.error('Manual sync failed:', error);
       toast.error('Failed to sync token details. Please try again.');
     }
-  }, [tokenAddress, chainId, address, isOnline, fetchTokenDetailsFromBlockchain]);
+  }, [tokenAddress, chainId, address, isOnline, fetchTokenDetailsFromBlockchain, initializeTokenDetails]);
 
   useEffect(() => {
     if (isInitialized && tokenAddress && chainId && address) {
@@ -1116,7 +1127,7 @@ export default function InteractionClient() {
                       <Coins className="h-5 w-5 text-green-500 dark:text-[#FFD600]" />
                       <h3 className="text-lg font-semibold text-blue-400 dark:text-yellow-200">Max Supply</h3>
                     </div>
-                    <p className="text-lg font-bold text-blue-400 dark:text-yellow-200">{tokenDetails.maxSupply} {tokenDetails.tokenSymbol}</p>
+                    <p className="text-lg font-bold text-blue-400 dark:text-yellow-200">{formatNumber(tokenDetails.maxSupply)} {tokenDetails.tokenSymbol}</p>
                   </div>
                   <Button 
                     onClick={openMaxSupplyModal}
@@ -1133,7 +1144,7 @@ export default function InteractionClient() {
                       <Target className="h-5 w-5 text-blue-400 dark:text-[#FFD600]" />
                       <h3 className="text-lg font-semibold text-blue-400 dark:text-yellow-200">Threshold Supply</h3>
                     </div>
-                    <p className="text-lg font-bold text-blue-400 dark:text-yellow-200">{tokenDetails.thresholdSupply} {tokenDetails.tokenSymbol}</p>
+                    <p className="text-lg font-bold text-blue-400 dark:text-yellow-200">{formatNumber(tokenDetails.thresholdSupply)} {tokenDetails.tokenSymbol}</p>
                   </div>
                   <Button 
                     onClick={openThresholdModal}
@@ -1150,7 +1161,7 @@ export default function InteractionClient() {
                       <ArrowUp className="h-5 w-5 text-purple-500 dark:text-[#FFD600]" />
                       <h3 className="text-lg font-semibold text-blue-400 dark:text-yellow-200">Expansion Rate</h3>
                     </div>
-                    <p className="text-lg font-bold text-blue-400 dark:text-yellow-200">{tokenDetails.maxExpansionRate} %</p>
+                    <p className="text-lg font-bold text-blue-400 dark:text-yellow-200">{formatNumber(tokenDetails.maxExpansionRate)}%</p>
                   </div>
                   <Button 
                     onClick={openExpansionRateModal}
@@ -1220,8 +1231,7 @@ export default function InteractionClient() {
                     <div className="flex items-center justify-between mb-4">
                       <div className="space-y-1">
                         <p className="text-sm text-gray-600 dark:text-yellow-200">
-                          Max Mintable Amount: 
-                          <span 
+                          Max Mintable Amount: <span 
                             className="font-bold cursor-help" 
                             title={`${tokenDetails.maxMintableAmount} ${tokenDetails.tokenSymbol}`}
                           >
@@ -1230,8 +1240,7 @@ export default function InteractionClient() {
                         </p>
                       </div>
                       <p className="text-sm text-gray-600 dark:text-yellow-200">
-                        Current Supply: 
-                        <span 
+                        Current Supply: <span 
                           className="font-bold cursor-help" 
                           title={`${tokenDetails.currentSupply} ${tokenDetails.tokenSymbol}`}
                         >
@@ -1266,8 +1275,7 @@ export default function InteractionClient() {
                       {mintAmount && !isNaN(Number(mintAmount)) && Number(mintAmount) > 0 && (
                         <div className="mt-2 p-2 rounded-lg bg-blue-50 dark:bg-yellow-400/10 border border-blue-200 dark:border-yellow-400/20">
                           <p className="text-xs text-blue-600 dark:text-yellow-200">
-                            You will receive: 
-                            <span 
+                            You will receive: <span 
                               className="font-bold cursor-help" 
                               title={`${userAmountAfterFees || 0} ${tokenDetails.tokenSymbol}`}
                             >
@@ -1280,8 +1288,7 @@ export default function InteractionClient() {
                               )} {tokenDetails.tokenSymbol}
                             </span>
                             <br />
-                            Clowder fee: 
-                            <span 
+                            Clowder fee: <span 
                               className="font-bold cursor-help" 
                               title={`${!isNaN(userAmountAfterFees) && userAmountAfterFees !== null ? Number(mintAmount) - userAmountAfterFees : 0} ${tokenDetails.tokenSymbol}`}
                             >
