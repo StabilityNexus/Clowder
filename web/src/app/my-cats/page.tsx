@@ -300,22 +300,7 @@ export default function MyCATsPage() {
     }
   }, [address, isOnline, getCache, batchSaveCatDetails, saveCache, fetchAllCATsFromBlockchain]);
 
-  // Manual sync function for consistency with InteractionClient
-  const handleManualSync = useCallback(async () => {
-    if (!address || !isOnline) {
-      if (!isOnline) {
-        toast.error('Cannot sync while offline. Please check your internet connection.');
-      }
-      return;
-    }
-    
-    try {
-      await syncWithBlockchain(true);
-    } catch (error) {
-      console.error('Manual sync failed:', error);
-      toast.error('Failed to sync CATs. Please try again.');
-    }
-  }, [address, isOnline, syncWithBlockchain]);
+
 
   // Listen for CAT creation events and auto-sync
   useEffect(() => {
@@ -404,6 +389,25 @@ export default function MyCATsPage() {
       setError('Failed to load CATs. Please try again.');
     }
   }, [address, isInitialized, loadCATsFromStorage, pagination.catsPerPage]);
+
+  // Manual sync function for consistency with InteractionClient
+  const handleManualSync = useCallback(async () => {
+    if (!address || !isOnline) {
+      if (!isOnline) {
+        toast.error('Cannot sync while offline. Please check your internet connection.');
+      }
+      return;
+    }
+    
+    try {
+      await syncWithBlockchain(true);
+      // Refresh the page data after successful sync
+      await updateFilteredCATs();
+    } catch (error) {
+      console.error('Manual sync failed:', error);
+      toast.error('Failed to sync CATs. Please try again.');
+    }
+  }, [address, isOnline, syncWithBlockchain, updateFilteredCATs]);
 
   // Update current page CATs when page changes (without refetching from storage)
   const updateCurrentPageCATs = useCallback((page: number) => {
