@@ -435,7 +435,7 @@ export default function Home() {
               transition={{ duration: 0.8 }}
               viewport={{ once: true }}
             >
-              Clowder's Team
+              Clowder&apos;s Team
             </motion.h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
               <motion.div
