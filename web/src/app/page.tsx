@@ -356,7 +356,7 @@ export default function Home() {
                 {[
                     {
                       title: "Open Source Software Development",
-                      explanation: "Developers can reward themselves for coding, fixing bugs, writing documentation and improving a project's impact.",
+                      explanation: "Developers can reward themselves for coding, fixing bugs, writing documentation and improving a project&apos;s impact.",
                       gradient: "from-blue-500 to-blue-600 dark:from-yellow-400 dark:to-yellow-500"
                     },
                     {
