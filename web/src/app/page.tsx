@@ -135,27 +135,6 @@ export default function Home() {
             </motion.p>
 
             <motion.div
-              className="flex items-center justify-center space-x-6 mb-12"
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ duration: 0.8, delay: 0.6 }}
-            >
-              {contact_links.map(({ href, icon }, index) => (
-                <motion.a
-                  key={index}
-                  href={href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-3xl text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-300"
-                  whileHover={{ scale: 1.2 }}
-                  whileTap={{ scale: 0.9 }}
-                >
-                  <FontAwesomeIcon icon={icon} />
-                </motion.a>
-              ))}
-            </motion.div>
-
-            <motion.div
               className="flex flex-wrap justify-center gap-4"
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
@@ -198,6 +177,28 @@ export default function Home() {
                 </>
               )}
             </motion.div>
+
+            <motion.div
+              className="flex items-center justify-center space-x-6 mb-12"
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.8, delay: 0.6 }}
+            >
+              {contact_links.map(({ href, icon }, index) => (
+                <motion.a
+                  key={index}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-3xl text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors duration-300"
+                  whileHover={{ scale: 1.2 }}
+                  whileTap={{ scale: 0.9 }}
+                >
+                  <FontAwesomeIcon icon={icon} />
+                </motion.a>
+              ))}
+            </motion.div>
+            
           </motion.div>
         </motion.section>
 
@@ -261,7 +262,7 @@ export default function Home() {
                   {
                     step: "3",
                     title: "Token Transfers",
-                    detail: "Initially, tokens are only transferrable between addresses that already hold them, preventing speculation while building your core contributor community. Enable unrestricted token transfers at any time when ready.",
+                    detail: "Initially tokens are only transferrable between addresses that already hold them, preventing speculation. Enable unrestricted token transfers at any time when the project is ready.",
                     gradient: "from-indigo-500 to-indigo-600 dark:from-yellow-600 dark:to-yellow-700"
                   }
                 ].map((step, index) => (
@@ -434,7 +435,7 @@ export default function Home() {
               transition={{ duration: 0.8 }}
               viewport={{ once: true }}
             >
-              About Us
+              Clowder's Team
             </motion.h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
               <motion.div
