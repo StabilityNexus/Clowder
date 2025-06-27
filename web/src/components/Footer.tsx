@@ -45,7 +45,7 @@ export default function Footer() {
           style={{ fontFamily: "var(--font-bebas-nueue)" }}
         >
           <span className="mr-1">&copy;</span>
-          The Stable Order. All rights reserved.
+          The Stable Order.
         </div>
 
         {/* Social Links Section */}
