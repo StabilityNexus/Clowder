@@ -179,7 +179,7 @@ export default function Home() {
             </motion.div>
 
             <motion.div
-              className="flex items-center justify-center space-x-6 mb-12"
+              className="flex items-center justify-center space-x-6 mb-12 mt-8"
               initial={{ y: 20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ duration: 0.8, delay: 0.6 }}
