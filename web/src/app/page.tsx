@@ -130,8 +130,8 @@ export default function Home() {
               animate={{ y: 0, opacity: 1 }}
               transition={{ duration: 0.8, delay: 0.4 }}
             >
-              Create Contribution Accounting Tokens (CATs) <br />
-              to track contributions to your projects.
+              Track contributions to your projects using <br />
+              Contribution Accounting Tokens (CATs)
             </motion.p>
 
             <motion.div
@@ -247,21 +247,21 @@ export default function Home() {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 relative">
                 {[
                   {
-                    step: "01",
-                    title: "Launch Your CAT",
-                    detail: "Define the maximum token supply, set thresholds, and manage controlled expansion to ensure token stability and value.",
+                    step: "1",
+                    title: "Setup",
+                    detail: "Define the maximum token supply and maximum supply expansion rate to prevent excessive dillution and ensure token stability.",
                     gradient: "from-blue-500 to-blue-600 dark:from-yellow-400 dark:to-yellow-500"
                   },
                   {
-                    step: "02",
-                    title: "Control Token Distribution",
-                    detail: "Grant and revoke minter roles to trusted contributors, ensuring only authorized members can create new tokens for the community.",
+                    step: "2",
+                    title: "Token Distribution",
+                    detail: "Grant revokable minter role to trusted contributors, to authorize them to mint tokens for the community within the defined bounds.",
                     gradient: "from-purple-500 to-purple-600 dark:from-yellow-500 dark:to-yellow-600"
                   },
                   {
-                    step: "03",
-                    title: "Restrict Token Transfers",
-                    detail: "Initially, tokens can only be transferred to addresses that already hold them, preventing speculation while building your core community.",
+                    step: "3",
+                    title: "Token Transfers",
+                    detail: "Initially, tokens are only transferrable between addresses that already hold them, preventing speculation while building your core contributor community. Enable unrestricted token transfers at any time when ready.",
                     gradient: "from-indigo-500 to-indigo-600 dark:from-yellow-600 dark:to-yellow-700"
                   }
                 ].map((step, index) => (
@@ -337,7 +337,7 @@ export default function Home() {
                  transition={{ duration: 0.6, delay: 0.8 }}
                  viewport={{ once: true }}
                >
-                 Perfect Use Cases
+                 Why CATs
                </motion.h3>
               <motion.p 
                 className="text-gray-600 dark:text-gray-300 mb-12 max-w-3xl mx-auto text-lg font-medium leading-relaxed"
@@ -346,29 +346,31 @@ export default function Home() {
                 transition={{ duration: 0.6, delay: 1.0 }}
                 viewport={{ once: true }}
               >
-                Where CATs shine brightest - turning collaboration into ownership
+                CATs are proof-of-contribution tokens, rewarding collaboration with ownership. <br />
+                CATs shine brightest in projects that require cooperation and proper accounting of contributions. <br />
+                Typical use cases include:
               </motion.p>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                 {[
                     {
-                      title: "Open Source Projects",
-                      explanation: "Reward developers for coding, bug fixing, documentation, and improving the projects impact.",
+                      title: "Open Source Software Development",
+                      explanation: "Developers can reward themselves for coding, fixing bugs, writing documentation and improving a project's impact.",
                       gradient: "from-blue-500 to-blue-600 dark:from-yellow-400 dark:to-yellow-500"
                     },
                     {
-                      title: "Creative Collaboratives",
-                      explanation: "Artists, musicians, and content creators can fairly share ownership according to their creative input and effort.",
+                      title: "Collaborative Creativity",
+                      explanation: "Artists, musicians and content creators can share ownership according to the value of their creative input.",
                       gradient: "from-blue-500 to-blue-600 dark:from-yellow-500 dark:to-yellow-600"
                     },
                     {
                       title: "Event Management",
-                      explanation: "Recognize and reward event organizers, volunteers, and promoters for making events successful and engaging.",
+                      explanation: "Event organizers, volunteers and promoters can recognize their efforts for making events successful and engaging.",
                       gradient: "from-blue-500 to-blue-600 dark:from-yellow-400 dark:to-yellow-500"
                     },
                     {
-                      title: "Community DAOs",
-                      explanation: "Give community members fair governance rights and influence based on their active participation and contributions.",
+                      title: "Governance-Based DAOs",
+                      explanation: "Community members can give themselves fair governance rights and influence based on their active participation.",
                       gradient: "from-blue-500 to-blue-600 dark:from-yellow-500 dark:to-yellow-600"
                     }
                   ].map((useCase, index) => (
