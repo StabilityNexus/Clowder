@@ -26,11 +26,11 @@ import { SupportedChainId } from "@/utils/indexedDB";
 
 // Chain names mapping
 const CHAIN_NAMES: Record<SupportedChainId, string> = {
-  137: "Polygon",
-  534351: "Scroll Sepolia",
+  // 137: "Polygon",
+  // 534351: "Scroll Sepolia",
   5115: "Citrea Testnet",
-  61: "Ethereum Classic",
-  8453: "Base"
+  // 61: "Ethereum Classic",
+  // 8453: "Base"
 };
 
 
@@ -237,7 +237,8 @@ export default function InteractionClient() {
 
   // Type guard for chain ID validation
   const isValidChainId = useCallback((chainId: number): chainId is SupportedChainId => {
-    const validChainIds: SupportedChainId[] = [ 137, 534351, 5115, 61, 8453];
+    // const validChainIds: SupportedChainId[] = [ 137, 534351, 5115, 61, 8453];
+    const validChainIds: SupportedChainId[] = [ 5115];
     return validChainIds.includes(chainId as SupportedChainId);
   }, []);
 
