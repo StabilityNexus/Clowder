@@ -100,7 +100,6 @@ export default function InteractionClient() {
   const [mintingMode, setMintingMode] = useState<'mint' | 'receive'>('mint');
   const [receiveAmount, setReceiveAmount] = useState("");
   const [calculatedMintAmount, setCalculatedMintAmount] = useState<number>(0);
-  const [isCalculatingMintAmount, setIsCalculatingMintAmount] = useState<boolean>(false);
 
   const [tokenAddress, setTokenAddress] = useState<`0x${string}`>("0x0");
   const [chainId, setChainId] = useState<SupportedChainId | null>(null);
@@ -195,7 +194,6 @@ export default function InteractionClient() {
   const [isUserAdmin, setIsUserAdmin] = useState<boolean>(false);
   const [isUserMinter, setIsUserMinter] = useState<boolean>(false);
   const [userAmountAfterFees, setUserAmountAfterFees] = useState<number>(0);
-  const [isCalculatingFees, setIsCalculatingFees] = useState<boolean>(false);
   const { writeContract: grantMinterRole, data: grantMinterRoleData } = useWriteContract();
   const { writeContract: revokeMinterRole, data: revokeMinterRoleData } = useWriteContract();
 
