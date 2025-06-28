@@ -94,9 +94,27 @@ export default function InteractionClient() {
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   
+  // Add new state for minting mode toggle
+  // 'mint' mode: user enters amount to mint, shows amount they'll receive
+  // 'receive' mode: user enters amount to receive, shows amount that will be minted
+  const [mintingMode, setMintingMode] = useState<'mint' | 'receive'>('mint');
+  const [receiveAmount, setReceiveAmount] = useState("");
+  const [calculatedMintAmount, setCalculatedMintAmount] = useState<number>(0);
+  const [isCalculatingMintAmount, setIsCalculatingMintAmount] = useState<boolean>(false);
 
   const [tokenAddress, setTokenAddress] = useState<`0x${string}`>("0x0");
   const [chainId, setChainId] = useState<SupportedChainId | null>(null);
+
+  const [tokenDetails, setTokenDetails] = useState<TokenDetailsState>({
+    tokenName: "",
+    tokenSymbol: "",
+    maxSupply: 0,
+    thresholdSupply: 0,
+    maxExpansionRate: 0,
+    currentSupply: 0,
+    lastMintTimestamp: 0,
+    maxMintableAmount: 0,
+  });
 
   // Helper function to add delays between requests
   const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -132,69 +150,43 @@ export default function InteractionClient() {
   }, []);
 
   // Function to calculate user amount after fees
-  const calculateUserAmountAfterFees = useCallback(async (amount: string) => {
-    if (!amount || !tokenAddress || !chainId || isNaN(Number(amount)) || Number(amount) <= 0) {
+  // Simple math: if fee is 0.5%, then userAmount = mintAmount * 0.995
+  const calculateUserAmountAfterFees = useCallback((amount: string) => {
+    if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
       setUserAmountAfterFees(0);
-      setIsCalculatingFees(false);
       return;
     }
 
-    // Validate that decimals is set and is a valid number
-    if (decimals === undefined || decimals === null || isNaN(decimals)) {
-      console.warn("Decimals not set yet, skipping fee calculation");
-      setIsCalculatingFees(false);
+    const mintAmount = Number(amount);
+    
+    // Simple calculation: userAmount = mintAmount * (1 - 0.005)
+    const userAmount = mintAmount * 0.995;
+    
+    // Round to 6 decimal places for better UX
+    const roundedUserAmount = Math.round(userAmount * 1000000) / 1000000;
+    
+    setUserAmountAfterFees(roundedUserAmount);
+  }, []);
+
+  // Function to calculate mint amount needed to achieve desired receive amount
+  // Simple math: if fee is 0.5%, then receiveAmount = mintAmount * 0.995
+  // Therefore: mintAmount = receiveAmount / 0.995
+  const calculateMintAmountFromReceive = useCallback((desiredReceiveAmount: string) => {
+    if (!desiredReceiveAmount || isNaN(Number(desiredReceiveAmount)) || Number(desiredReceiveAmount) <= 0) {
+      setCalculatedMintAmount(0);
       return;
     }
 
-    setIsCalculatingFees(true);
-
-    try {
-      const publicClient = getPublicClient(config, { chainId });
-      if (!publicClient) {
-        console.warn("No public client available, using fallback calculation");
-        const fallbackAmount = Number(amount) * 0.995;
-        setUserAmountAfterFees(isNaN(fallbackAmount) ? 0 : fallbackAmount);
-        setIsCalculatingFees(false);
-        return;
-      }
-
-      const userAmount = await makeContractCallWithRetry(publicClient, {
-        address: tokenAddress,
-        abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
-        functionName: "userAmountAfterFees",
-        args: [parseUnits(amount, decimals)],
-      });
-
-      const calculatedAmount = Number(formatUnits(userAmount as bigint, decimals));
-      
-      // Validate the calculated amount
-      if (isNaN(calculatedAmount) || calculatedAmount < 0) {
-        console.warn("Invalid calculated amount, using fallback");
-        const fallbackAmount = Number(amount) * 0.995;
-        setUserAmountAfterFees(isNaN(fallbackAmount) ? 0 : fallbackAmount);
-      } else {
-        setUserAmountAfterFees(calculatedAmount);
-      }
-    } catch (error) {
-      console.error("Error calculating user amount after fees:", error);
-      // Fallback calculation
-      const fallbackAmount = Number(amount) * 0.995;
-      setUserAmountAfterFees(isNaN(fallbackAmount) ? 0 : fallbackAmount);
-    } finally {
-      setIsCalculatingFees(false);
-    }
-  }, [tokenAddress, chainId, decimals, makeContractCallWithRetry]);
-
-  const [tokenDetails, setTokenDetails] = useState<TokenDetailsState>({
-    tokenName: "",
-    tokenSymbol: "",
-    maxSupply: 0,
-    thresholdSupply: 0,
-    maxExpansionRate: 0,
-    currentSupply: 0,
-    lastMintTimestamp: 0,
-    maxMintableAmount: 0,
-  });
+    const receiveAmount = Number(desiredReceiveAmount);
+    
+    // Simple calculation: mintAmount = receiveAmount / (1 - 0.005)
+    const mintAmount = receiveAmount / 0.995;
+    
+    // Round to 6 decimal places for better UX
+    const roundedMintAmount = Math.round(mintAmount * 1000000) / 1000000;
+    
+    setCalculatedMintAmount(roundedMintAmount);
+  }, []);
 
   // Add new state for transaction signing
   const [isSigning, setIsSigning] = useState(false);
@@ -682,19 +674,31 @@ export default function InteractionClient() {
     }
   }, [revokeMinterRoleData, chainId]);
 
-  // Calculate user amount after fees when mint amount changes
+  // Calculate amounts based on minting mode
   useEffect(() => {
-    calculateUserAmountAfterFees(mintAmount);
-  }, [mintAmount, calculateUserAmountAfterFees]);
+    if (mintingMode === 'mint') {
+      calculateUserAmountAfterFees(mintAmount);
+    }
+  }, [mintAmount, calculateUserAmountAfterFees, mintingMode]);
+
+  useEffect(() => {
+    if (mintingMode === 'receive') {
+      calculateMintAmountFromReceive(receiveAmount);
+    }
+  }, [receiveAmount, calculateMintAmountFromReceive, mintingMode]);
 
   const handleMint = async () => {
     try {
       setIsSigning(true);
+      
+      // Use the appropriate amount based on minting mode
+      const amountToMint = mintingMode === 'mint' ? mintAmount : calculatedMintAmount.toString();
+      
       await mint({
         abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
         address: tokenAddress,
         functionName: "mint",
-        args: [mintToAddress as `0x${string}`, parseUnits(mintAmount, decimals)]
+        args: [mintToAddress as `0x${string}`, parseUnits(amountToMint, decimals)]
       });
     } catch (error) {
       console.error("Error minting tokens:", error);
@@ -1249,59 +1253,141 @@ export default function InteractionClient() {
                         </span>
                       </p>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="mintAmount" className="text-sm font-bold text-gray-600 dark:text-yellow-200">Amount to Mint</Label>
-                      <div className="flex gap-2">
-                        <Input
-                          id="mintAmount"
-                          type="number"
-                          placeholder="Enter amount"
-                          value={mintAmount}
-                          onChange={(e) => setMintAmount(Math.min(Number(e.target.value), tokenDetails.maxMintableAmount).toString())}
-                          className="h-10 text-sm bg-white/60 dark:bg-[#2a1a00] border-2 border-gray-200 dark:border-yellow-400/20 text-gray-600 dark:text-yellow-200"
-                        />
-                        <Button
-                          type="button"
-                          onClick={() => {
-                            // Set max mintable amount (fees will be deducted from this amount)
-                            const safeMaxAmount = Math.max(0, tokenDetails.maxMintableAmount);
-                            setMintAmount(safeMaxAmount.toFixed(6));
-                          }}
-                          disabled={tokenDetails.maxMintableAmount === 0}
-                          className="h-10 px-3 text-sm bg-gray-500 dark:bg-gray-600 hover:bg-gray-600 dark:hover:bg-gray-700 text-white rounded-xl whitespace-nowrap"
-                        >
-                          Max
-                        </Button>
+                    {/* Minting Mode Toggle */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-center">
+                        <div className="flex bg-gray-100 dark:bg-[#2a1a00] rounded-xl p-1 border border-gray-200 dark:border-yellow-400/20">
+                          <Button
+                            type="button"
+                            onClick={() => setMintingMode('mint')}
+                            className={`h-8 px-3 text-xs rounded-lg transition-all ${
+                              mintingMode === 'mint'
+                                ? 'bg-[#5cacc5] dark:bg-[#BA9901] text-white shadow-sm'
+                                : 'bg-transparent text-gray-600 dark:text-yellow-200 hover:bg-gray-50 dark:hover:bg-[#1a1400]'
+                            }`}
+                          >
+                            Mint by Amount
+                          </Button>
+                          <Button
+                            type="button"
+                            onClick={() => setMintingMode('receive')}
+                            className={`h-8 px-3 text-xs rounded-lg transition-all ${
+                              mintingMode === 'receive'
+                                ? 'bg-[#5cacc5] dark:bg-[#BA9901] text-white shadow-sm'
+                                : 'bg-transparent text-gray-600 dark:text-yellow-200 hover:bg-gray-50 dark:hover:bg-[#1a1400]'
+                            }`}
+                          >
+                            Mint by Receive
+                          </Button>
+                        </div>
                       </div>
-                      {mintAmount && !isNaN(Number(mintAmount)) && Number(mintAmount) > 0 && (
-                        <div className="mt-2 p-2 rounded-lg bg-blue-50 dark:bg-yellow-400/10 border border-blue-200 dark:border-yellow-400/20">
-                          <p className="text-xs text-blue-600 dark:text-yellow-200">
-                            You will receive: <span 
-                              className="font-bold cursor-help" 
-                              title={`${userAmountAfterFees || 0} ${tokenDetails.tokenSymbol}`}
+
+                      {/* Mint Mode: User enters amount to mint */}
+                      {mintingMode === 'mint' && (
+                        <div className="space-y-2">
+                          <div className="flex gap-2">
+                            <Input
+                              id="mintAmount"
+                              type="number"
+                              placeholder="Enter amount to mint"
+                              value={mintAmount}
+                              onChange={(e) => setMintAmount(Math.min(Number(e.target.value), tokenDetails.maxMintableAmount).toString())}
+                              className="h-10 text-sm bg-white/60 dark:bg-[#2a1a00] border-2 border-gray-200 dark:border-yellow-400/20 text-gray-600 dark:text-yellow-200"
+                            />
+                            <Button
+                              type="button"
+                              onClick={() => {
+                                const safeMaxAmount = Math.max(0, tokenDetails.maxMintableAmount);
+                                setMintAmount(safeMaxAmount.toFixed(6));
+                              }}
+                              disabled={tokenDetails.maxMintableAmount === 0}
+                              className="h-10 px-3 text-sm bg-gray-500 dark:bg-gray-600 hover:bg-gray-600 dark:hover:bg-gray-700 text-white rounded-xl whitespace-nowrap"
                             >
-                              {isCalculatingFees ? (
-                                "Calculating..."
-                              ) : !isNaN(userAmountAfterFees) && userAmountAfterFees !== null ? (
-                                formatNumber(userAmountAfterFees)
-                              ) : (
-                                "0"
-                              )} {tokenDetails.tokenSymbol}
-                            </span>
-                            <br />
-                            Clowder fee: <span 
-                              className="font-bold cursor-help" 
-                              title={`${!isNaN(userAmountAfterFees) && userAmountAfterFees !== null ? Number(mintAmount) - userAmountAfterFees : 0} ${tokenDetails.tokenSymbol}`}
+                              Max
+                            </Button>
+                          </div>
+                          {mintAmount && !isNaN(Number(mintAmount)) && Number(mintAmount) > 0 && (
+                            <div className="mt-2 p-2 rounded-xl bg-blue-50 dark:bg-yellow-400/10 border border-blue-200 dark:border-yellow-400/20">
+                              <p className="text-xs text-blue-600 dark:text-yellow-200">
+                                You will receive: <span 
+                                  className="font-bold cursor-help" 
+                                  title={`${userAmountAfterFees || 0} ${tokenDetails.tokenSymbol}`}
+                                >
+                                                                  {!isNaN(userAmountAfterFees) && userAmountAfterFees !== null ? (
+                                  formatNumber(userAmountAfterFees)
+                                ) : (
+                                  "0"
+                                )} {tokenDetails.tokenSymbol}
+                                </span>
+                                <br />
+                                Clowder fee: <span 
+                                  className="font-bold cursor-help" 
+                                  title={`${!isNaN(userAmountAfterFees) && userAmountAfterFees !== null ? Number(mintAmount) - userAmountAfterFees : 0} ${tokenDetails.tokenSymbol}`}
+                                >
+                                                                  {!isNaN(userAmountAfterFees) && userAmountAfterFees !== null ? (
+                                  formatNumber(Number(mintAmount) - userAmountAfterFees)
+                                ) : (
+                                  "0"
+                                )} {tokenDetails.tokenSymbol}
+                                </span>
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Receive Mode: User enters amount to receive */}
+                      {mintingMode === 'receive' && (
+                        <div className="space-y-2">
+                          <div className="flex gap-2">
+                            <Input
+                              id="receiveAmount"
+                              type="number"
+                              placeholder="Enter amount recipent should receive"
+                              value={receiveAmount}
+                              onChange={(e) => setReceiveAmount(e.target.value)}
+                              className="h-10 text-sm bg-white/60 dark:bg-[#2a1a00] border-2 border-gray-200 dark:border-yellow-400/20 text-gray-600 dark:text-yellow-200"
+                            />
+                            <Button
+                              type="button"
+                              onClick={() => {
+                                // Set a reasonable max receive amount (slightly less than max mintable due to fees)
+                                const safeMaxReceiveAmount = Math.max(0, tokenDetails.maxMintableAmount * 0.99);
+                                setReceiveAmount(safeMaxReceiveAmount.toFixed(6));
+                              }}
+                              disabled={tokenDetails.maxMintableAmount === 0}
+                              className="h-10 px-3 text-sm bg-gray-500 dark:bg-gray-600 hover:bg-gray-600 dark:hover:bg-gray-700 text-white rounded-xl whitespace-nowrap"
                             >
-                              {isCalculatingFees ? (
-                                "Calculating..."
-                              ) : !isNaN(userAmountAfterFees) && userAmountAfterFees !== null ? (
-                                formatNumber(Number(mintAmount) - userAmountAfterFees)
-                              ) : (
-                                "0"
-                              )} {tokenDetails.tokenSymbol}
-                            </span>
-                          </p>
+                              Max
+                            </Button>
+                          </div>
+                          {receiveAmount && !isNaN(Number(receiveAmount)) && Number(receiveAmount) > 0 && (
+                            <div className="mt-2 p-2 rounded-xl bg-green-50 dark:bg-green-400/10 border border-green-200 dark:border-green-400/20">
+                              <p className="text-xs text-green-600 dark:text-green-200">
+                                Amount to mint: <span 
+                                  className="font-bold cursor-help" 
+                                  title={`${calculatedMintAmount || 0} ${tokenDetails.tokenSymbol}`}
+                                >
+                                                                  {!isNaN(calculatedMintAmount) && calculatedMintAmount !== null ? (
+                                  formatNumber(calculatedMintAmount)
+                                ) : (
+                                  "0"
+                                )} {tokenDetails.tokenSymbol}
+                                </span>
+                                <br />
+                                Clowder fee: <span 
+                                  className="font-bold cursor-help" 
+                                  title={`${!isNaN(calculatedMintAmount) && calculatedMintAmount !== null ? calculatedMintAmount - Number(receiveAmount) : 0} ${tokenDetails.tokenSymbol}`}
+                                >
+                                                                  {!isNaN(calculatedMintAmount) && calculatedMintAmount !== null ? (
+                                  formatNumber(calculatedMintAmount - Number(receiveAmount))
+                                ) : (
+                                  "0"
+                                )} {tokenDetails.tokenSymbol}
+                                </span>
+                              </p>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -1320,7 +1406,14 @@ export default function InteractionClient() {
                   <div className="mt-6">
                     <Button
                       onClick={handleMint}
-                      disabled={!mintAmount || !mintToAddress || isMinting || isSigning || (!isUserMinter && !isUserAdmin)}
+                      disabled={
+                        !mintToAddress || 
+                        isMinting || 
+                        isSigning || 
+                        (!isUserMinter && !isUserAdmin) ||
+                        (mintingMode === 'mint' && (!mintAmount || isNaN(Number(mintAmount)) || Number(mintAmount) <= 0)) ||
+                        (mintingMode === 'receive' && (!receiveAmount || isNaN(Number(receiveAmount)) || Number(receiveAmount) <= 0 || calculatedMintAmount <= 0))
+                      }
                       className="w-full h-10 text-sm bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {!isUserMinter && !isUserAdmin ? (
