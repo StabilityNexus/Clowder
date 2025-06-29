@@ -148,43 +148,68 @@ export default function InteractionClient() {
     }
   }, []);
 
-  // Function to calculate user amount after fees
-  // Simple math: if fee is 0.5%, then userAmount = mintAmount * 0.995
+  // PRECISION IMPROVEMENT: Using BigInt arithmetic for exact 18-decimal precision
+  // Function to calculate user amount after fees using precise BigInt arithmetic
+  // Matches smart contract: feeAmount = (amount * 500) / 100000; userAmount = amount - feeAmount
   const calculateUserAmountAfterFees = useCallback((amount: string) => {
     if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
       setUserAmountAfterFees(0);
       return;
     }
 
-    const mintAmount = Number(amount);
-    
-    // Simple calculation: userAmount = mintAmount * (1 - 0.005)
-    const userAmount = mintAmount * 0.995;
-    
-    // Round to 6 decimal places for better UX
-    const roundedUserAmount = Math.round(userAmount * 1000000) / 1000000;
-    
-    setUserAmountAfterFees(roundedUserAmount);
+          try {
+        // Convert to BigInt with 18 decimals for precise calculation
+        const amountBigInt = parseUnits(amount, decimals);
+        
+        // Smart contract constants: clowderFee = 500, denominator = 100000
+        const clowderFee = BigInt(500);
+        const denominator = BigInt(100000);
+      
+      // Calculate fee: (amount * 500) / 100000
+      const feeAmountBigInt = (amountBigInt * clowderFee) / denominator;
+      
+      // Calculate user amount: amount - fee
+      const userAmountBigInt = amountBigInt - feeAmountBigInt;
+      
+      // Convert back to number for display (maintaining precision)
+      const userAmountNumber = Number(formatUnits(userAmountBigInt, decimals));
+      
+      setUserAmountAfterFees(userAmountNumber);
+    } catch (error) {
+      console.error('Error calculating user amount after fees:', error);
+      setUserAmountAfterFees(0);
+    }
   }, []);
 
-  // Function to calculate mint amount needed to achieve desired receive amount
-  // Simple math: if fee is 0.5%, then receiveAmount = mintAmount * 0.995
-  // Therefore: mintAmount = receiveAmount / 0.995
+  // PRECISION IMPROVEMENT: Reverse calculation also uses precise BigInt arithmetic  
+  // Function to calculate mint amount needed to achieve desired receive amount using precise BigInt arithmetic
+  // Reverse calculation: if userAmount = amount - (amount * 500) / 100000, then amount = userAmount * 100000 / (100000 - 500)
   const calculateMintAmountFromReceive = useCallback((desiredReceiveAmount: string) => {
     if (!desiredReceiveAmount || isNaN(Number(desiredReceiveAmount)) || Number(desiredReceiveAmount) <= 0) {
       setCalculatedMintAmount(0);
       return;
     }
 
-    const receiveAmount = Number(desiredReceiveAmount);
-    
-    // Simple calculation: mintAmount = receiveAmount / (1 - 0.005)
-    const mintAmount = receiveAmount / 0.995;
-    
-    // Round to 6 decimal places for better UX
-    const roundedMintAmount = Math.round(mintAmount * 1000000) / 1000000;
-    
-    setCalculatedMintAmount(roundedMintAmount);
+          try {
+        // Convert to BigInt with 18 decimals for precise calculation
+        const receiveAmountBigInt = parseUnits(desiredReceiveAmount, decimals);
+        
+        // Smart contract constants: clowderFee = 500, denominator = 100000
+        const clowderFee = BigInt(500);
+        const denominator = BigInt(100000);
+      
+      // Calculate mint amount: receiveAmount * denominator / (denominator - clowderFee)
+      // This gives us: receiveAmount * 100000 / (100000 - 500) = receiveAmount * 100000 / 99500
+      const mintAmountBigInt = (receiveAmountBigInt * denominator) / (denominator - clowderFee);
+      
+      // Convert back to number for display (maintaining precision)
+      const mintAmountNumber = Number(formatUnits(mintAmountBigInt, decimals));
+      
+      setCalculatedMintAmount(mintAmountNumber);
+    } catch (error) {
+      console.error('Error calculating mint amount from receive:', error);
+      setCalculatedMintAmount(0);
+    }
   }, []);
 
   // Add new state for transaction signing
@@ -1289,14 +1314,30 @@ export default function InteractionClient() {
                               type="number"
                               placeholder="Enter amount to mint"
                               value={mintAmount}
-                              onChange={(e) => setMintAmount(Math.min(Number(e.target.value), tokenDetails.maxMintableAmount).toString())}
+                              onChange={(e) => {
+                                const inputValue = e.target.value;
+                                if (inputValue === '' || inputValue === '.') {
+                                  setMintAmount(inputValue);
+                                } else {
+                                  const numValue = Number(inputValue);
+                                  if (!isNaN(numValue) && numValue >= 0) {
+                                    // Only limit to max mintable amount if it exceeds the limit
+                                    if (numValue <= tokenDetails.maxMintableAmount) {
+                                      setMintAmount(inputValue);
+                                    } else {
+                                      setMintAmount(tokenDetails.maxMintableAmount.toString());
+                                    }
+                                  }
+                                }
+                              }}
                               className="h-10 text-sm bg-white/60 dark:bg-[#2a1a00] border-2 border-gray-200 dark:border-yellow-400/20 text-gray-600 dark:text-yellow-200"
                             />
                             <Button
                               type="button"
                               onClick={() => {
                                 const safeMaxAmount = Math.max(0, tokenDetails.maxMintableAmount);
-                                setMintAmount(safeMaxAmount.toFixed(6));
+                                // Maintain full precision for input, but limit displayed decimals for UX
+                                setMintAmount(safeMaxAmount.toString());
                               }}
                               disabled={tokenDetails.maxMintableAmount === 0}
                               className="h-10 px-3 text-sm bg-gray-500 dark:bg-gray-600 hover:bg-gray-600 dark:hover:bg-gray-700 text-white rounded-xl whitespace-nowrap"
@@ -1349,9 +1390,24 @@ export default function InteractionClient() {
                             <Button
                               type="button"
                               onClick={() => {
-                                // Set a reasonable max receive amount (slightly less than max mintable due to fees)
-                                const safeMaxReceiveAmount = Math.max(0, tokenDetails.maxMintableAmount * 0.99);
-                                setReceiveAmount(safeMaxReceiveAmount.toFixed(6));
+                                // Calculate precise max receive amount using exact smart contract fee calculation
+                                const maxMintableAmount = tokenDetails.maxMintableAmount;
+                                if (maxMintableAmount > 0) {
+                                  try {
+                                    const amountBigInt = parseUnits(maxMintableAmount.toString(), decimals);
+                                    const clowderFee = BigInt(500);
+                                    const denominator = BigInt(100000);
+                                    const feeAmountBigInt = (amountBigInt * clowderFee) / denominator;
+                                    const maxReceiveAmountBigInt = amountBigInt - feeAmountBigInt;
+                                    const maxReceiveAmount = formatUnits(maxReceiveAmountBigInt, decimals);
+                                    setReceiveAmount(maxReceiveAmount);
+                                  } catch (error) {
+                                    console.error('Error calculating max receive amount:', error);
+                                    setReceiveAmount('0');
+                                  }
+                                } else {
+                                  setReceiveAmount('0');
+                                }
                               }}
                               disabled={tokenDetails.maxMintableAmount === 0}
                               className="h-10 px-3 text-sm bg-gray-500 dark:bg-gray-600 hover:bg-gray-600 dark:hover:bg-gray-700 text-white rounded-xl whitespace-nowrap"
