@@ -423,7 +423,7 @@ export default function InteractionClient() {
       };
 
       console.log('Contract returned maxMintableAmount:', {
-        raw: maxMintable.toString(),
+        raw: (maxMintable as bigint).toString(),
         formatted: maxMintableAmountNumber,
         currentSupply: newTokenDetails.currentSupply,
         maxSupply: newTokenDetails.maxSupply,
