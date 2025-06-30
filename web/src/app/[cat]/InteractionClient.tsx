@@ -96,7 +96,6 @@ export default function InteractionClient() {
   
   // Remove minting mode toggle - use dual input fields
   const [receiveAmount, setReceiveAmount] = useState("");
-  const [calculatedMintAmount, setCalculatedMintAmount] = useState<number>(0);
   const [lastEditedField, setLastEditedField] = useState<'mint' | 'receive' | null>(null);
 
   const [tokenAddress, setTokenAddress] = useState<`0x${string}`>("0x0");
@@ -146,77 +145,12 @@ export default function InteractionClient() {
     }
   }, []);
 
-  // PRECISION IMPROVEMENT: Using BigInt arithmetic for exact 18-decimal precision
-  // Function to calculate user amount after fees using precise BigInt arithmetic
-  // Matches smart contract: feeAmount = (amount * 500) / 100000; userAmount = amount - feeAmount
-  const calculateUserAmountAfterFees = useCallback((amount: string) => {
-    if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
-      setUserAmountAfterFees(0);
-      return;
-    }
-
-          try {
-        // Convert to BigInt with 18 decimals for precise calculation
-        const amountBigInt = parseUnits(amount, decimals);
-        
-        // Smart contract constants: clowderFee = 500, denominator = 100000
-        const clowderFee = BigInt(500);
-        const denominator = BigInt(100000);
-      
-      // Calculate fee: (amount * 500) / 100000
-      const feeAmountBigInt = (amountBigInt * clowderFee) / denominator;
-      
-      // Calculate user amount: amount - fee
-      const userAmountBigInt = amountBigInt - feeAmountBigInt;
-      
-      // Convert back to number for display (maintaining precision)
-      const userAmountNumber = Number(formatUnits(userAmountBigInt, decimals));
-      
-      setUserAmountAfterFees(userAmountNumber);
-    } catch (error) {
-      console.error('Error calculating user amount after fees:', error);
-      setUserAmountAfterFees(0);
-    }
-  }, []);
-
-  // PRECISION IMPROVEMENT: Reverse calculation also uses precise BigInt arithmetic  
-  // Function to calculate mint amount needed to achieve desired receive amount using precise BigInt arithmetic
-  // Reverse calculation: if userAmount = amount - (amount * 500) / 100000, then amount = userAmount * 100000 / (100000 - 500)
-  const calculateMintAmountFromReceive = useCallback((desiredReceiveAmount: string) => {
-    if (!desiredReceiveAmount || isNaN(Number(desiredReceiveAmount)) || Number(desiredReceiveAmount) <= 0) {
-      setCalculatedMintAmount(0);
-      return;
-    }
-
-          try {
-        // Convert to BigInt with 18 decimals for precise calculation
-        const receiveAmountBigInt = parseUnits(desiredReceiveAmount, decimals);
-        
-        // Smart contract constants: clowderFee = 500, denominator = 100000
-        const clowderFee = BigInt(500);
-        const denominator = BigInt(100000);
-      
-      // Calculate mint amount: receiveAmount * denominator / (denominator - clowderFee)
-      // This gives us: receiveAmount * 100000 / (100000 - 500) = receiveAmount * 100000 / 99500
-      const mintAmountBigInt = (receiveAmountBigInt * denominator) / (denominator - clowderFee);
-      
-      // Convert back to number for display (maintaining precision)
-      const mintAmountNumber = Number(formatUnits(mintAmountBigInt, decimals));
-      
-      setCalculatedMintAmount(mintAmountNumber);
-    } catch (error) {
-      console.error('Error calculating mint amount from receive:', error);
-      setCalculatedMintAmount(0);
-    }
-  }, []);
-
   // Add new state for transaction signing
   const [isSigning, setIsSigning] = useState(false);
 
   const [minterAddress, setMinterAddress] = useState<string>("");
   const [isUserAdmin, setIsUserAdmin] = useState<boolean>(false);
   const [isUserMinter, setIsUserMinter] = useState<boolean>(false);
-  const [userAmountAfterFees, setUserAmountAfterFees] = useState<number>(0);
   const { writeContract: grantMinterRole, data: grantMinterRoleData } = useWriteContract();
   const { writeContract: revokeMinterRole, data: revokeMinterRoleData } = useWriteContract();
 
