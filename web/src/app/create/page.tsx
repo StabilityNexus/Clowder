@@ -110,9 +110,9 @@ const fields = [
     description: "Maximum supply expansion rate per year, for expansions above the supply threshold.",
     validate: (value: string) => ({
       isValid: /^\d+$/.test(value) && 
-               parseInt(value) >= 1 && 
+               parseInt(value) >= 0 && 
                parseInt(value) <= 100,
-      errorMessage: "Expansion rate must be between 1 and 100"
+      errorMessage: "Expansion rate must be between 0 and 100"
     })
   },
 ];
