@@ -94,12 +94,10 @@ export default function InteractionClient() {
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   
-  // Add new state for minting mode toggle
-  // 'mint' mode: user enters amount to mint, shows amount they'll receive
-  // 'receive' mode: user enters amount to receive, shows amount that will be minted
-  const [mintingMode, setMintingMode] = useState<'mint' | 'receive'>('mint');
+  // Remove minting mode toggle - use dual input fields
   const [receiveAmount, setReceiveAmount] = useState("");
   const [calculatedMintAmount, setCalculatedMintAmount] = useState<number>(0);
+  const [lastEditedField, setLastEditedField] = useState<'mint' | 'receive' | null>(null);
 
   const [tokenAddress, setTokenAddress] = useState<`0x${string}`>("0x0");
   const [chainId, setChainId] = useState<SupportedChainId | null>(null);
@@ -343,18 +341,34 @@ export default function InteractionClient() {
       ]);
       await delay(300);
 
-      const [lastMint, maxMintable] = await Promise.all([
-        makeContractCallWithRetry(publicClient, {
-          address: tokenAddress,
-          abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
-          functionName: "lastMintTimestamp",
-        }),
-        makeContractCallWithRetry(publicClient, {
+      // Fetch last mint timestamp first
+      const lastMint = await makeContractCallWithRetry(publicClient, {
+        address: tokenAddress,
+        abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
+        functionName: "lastMintTimestamp",
+      });
+      await delay(300);
+
+      // Fetch maxMintableAmount separately so we can gracefully handle a revert (e.g., overflow/underflow)
+      let maxMintable: bigint;
+      try {
+        maxMintable = await makeContractCallWithRetry(publicClient, {
           address: tokenAddress,
           abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
           functionName: "maxMintableAmount",
-        }),
-      ]);
+        }) as bigint;
+      } catch (err: unknown) {
+        // If the contract reverted due to arithmetic overflow/underflow we fallback to 0 so that the
+        // rest of the UI continues to work. We inspect the error message text which is what `viem`
+        // gives us.
+        const msg = (err as { message?: string }).message ?? "";
+        if (msg.toLowerCase().includes("underflow") || msg.toLowerCase().includes("overflow")) {
+          console.warn("maxMintableAmount reverted due to arithmetic error. Falling back to 0.");
+          maxMintable = BigInt(0);
+        } else {
+          throw err;
+        }
+      }
       await delay(300);
 
       // Batch 3: Transfer restrictions
@@ -396,6 +410,7 @@ export default function InteractionClient() {
       });
 
       // Update state with fresh data
+      const maxMintableAmountNumber = Number(formatUnits(maxMintable, decimals));
       const newTokenDetails = {
         tokenName: name as string,
         tokenSymbol: symbol as string,
@@ -404,8 +419,18 @@ export default function InteractionClient() {
         maxExpansionRate: Number(expansionRate as bigint) / 100,
         currentSupply: Number(formatUnits(currentSupply as bigint, decimals)),
         lastMintTimestamp: Number(lastMint as bigint),
-        maxMintableAmount: Number(formatUnits(maxMintable as bigint, decimals)),
+        maxMintableAmount: maxMintableAmountNumber,
       };
+
+      console.log('Contract returned maxMintableAmount:', {
+        raw: maxMintable.toString(),
+        formatted: maxMintableAmountNumber,
+        currentSupply: newTokenDetails.currentSupply,
+        maxSupply: newTokenDetails.maxSupply,
+        thresholdSupply: newTokenDetails.thresholdSupply,
+        expansionRate: newTokenDetails.maxExpansionRate,
+        lastMintTimestamp: newTokenDetails.lastMintTimestamp
+      });
 
       setTokenDetails(newTokenDetails);
       setTransferRestricted(restricted as boolean);
@@ -697,31 +722,62 @@ export default function InteractionClient() {
     }
   }, [revokeMinterRoleData, chainId]);
 
-  // Calculate amounts based on minting mode
+  // Calculate amounts for both input fields and update the corresponding field
   useEffect(() => {
-    if (mintingMode === 'mint') {
-      calculateUserAmountAfterFees(mintAmount);
+    if (lastEditedField === 'mint') {
+      if (mintAmount && !isNaN(Number(mintAmount)) && Number(mintAmount) > 0) {
+        // Update receive amount based on mint amount
+        const numValue = Number(mintAmount);
+        try {
+          const amountBigInt = parseUnits(numValue.toString(), decimals);
+          const clowderFee = BigInt(500);
+          const denominator = BigInt(100000);
+          const feeAmountBigInt = (amountBigInt * clowderFee) / denominator;
+          const userAmountBigInt = amountBigInt - feeAmountBigInt;
+          const userAmountNumber = Number(formatUnits(userAmountBigInt, decimals));
+          
+          setReceiveAmount(userAmountNumber.toString());
+        } catch (error) {
+          console.error('Error calculating receive amount:', error);
+        }
+      } else {
+        setReceiveAmount('');
+      }
     }
-  }, [mintAmount, calculateUserAmountAfterFees, mintingMode]);
+  }, [mintAmount, lastEditedField]);
 
   useEffect(() => {
-    if (mintingMode === 'receive') {
-      calculateMintAmountFromReceive(receiveAmount);
+    if (lastEditedField === 'receive') {
+      if (receiveAmount && !isNaN(Number(receiveAmount)) && Number(receiveAmount) > 0) {
+        // Update mint amount based on receive amount
+        const numValue = Number(receiveAmount);
+        try {
+          const receiveAmountBigInt = parseUnits(numValue.toString(), decimals);
+          const clowderFee = BigInt(500);
+          const denominator = BigInt(100000);
+          const mintAmountBigInt = (receiveAmountBigInt * denominator) / (denominator - clowderFee);
+          const mintAmountNumber = Number(formatUnits(mintAmountBigInt, decimals));
+          
+          setMintAmount(mintAmountNumber.toString());
+        } catch (error) {
+          console.error('Error calculating mint amount:', error);
+        }
+      } else {
+        setMintAmount('');
+      }
     }
-  }, [receiveAmount, calculateMintAmountFromReceive, mintingMode]);
+  }, [receiveAmount, lastEditedField]);
 
   const handleMint = async () => {
     try {
       setIsSigning(true);
       
-      // Use the appropriate amount based on minting mode
-      const amountToMint = mintingMode === 'mint' ? mintAmount : calculatedMintAmount.toString();
-      
+      // Use mintAmount for minting
       await mint({
         abi: CONTRIBUTION_ACCOUNTING_TOKEN_ABI,
         address: tokenAddress,
         functionName: "mint",
-        args: [mintToAddress as `0x${string}`, parseUnits(amountToMint, decimals)]
+        args: [mintToAddress as `0x${string}`, parseUnits(mintAmount, decimals)]
       });
     } catch (error) {
       console.error("Error minting tokens:", error);
@@ -1261,9 +1317,9 @@ export default function InteractionClient() {
                         <p className="text-sm text-gray-600 dark:text-yellow-200">
                           Max Mintable Amount: <span 
                             className="font-bold cursor-help" 
-                            title={`${tokenDetails.maxMintableAmount} ${tokenDetails.tokenSymbol}`}
+                            title={`${tokenDetails.maxMintableAmount} ${tokenDetails.tokenSymbol} (Full precision: ${tokenDetails.maxMintableAmount.toString()})`}
                           >
-                            {formatNumber(tokenDetails.maxMintableAmount)} {tokenDetails.tokenSymbol}
+                            {formatNumber(tokenDetails.maxMintableAmount, 8)} {tokenDetails.tokenSymbol}
                           </span>
                         </p>
                       </div>
@@ -1276,177 +1332,9 @@ export default function InteractionClient() {
                         </span>
                       </p>
                     </div>
-                    {/* Minting Mode Toggle */}
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-center">
-                        <div className="flex bg-gray-100 dark:bg-[#2a1a00] rounded-xl p-1 border border-gray-200 dark:border-yellow-400/20">
-                          <Button
-                            type="button"
-                            onClick={() => setMintingMode('mint')}
-                            className={`h-8 px-3 text-xs rounded-lg transition-all ${
-                              mintingMode === 'mint'
-                                ? 'bg-[#5cacc5] dark:bg-[#BA9901] text-white shadow-sm'
-                                : 'bg-transparent text-gray-600 dark:text-yellow-200 hover:bg-gray-50 dark:hover:bg-[#1a1400]'
-                            }`}
-                          >
-                            Mint by Amount
-                          </Button>
-                          <Button
-                            type="button"
-                            onClick={() => setMintingMode('receive')}
-                            className={`h-8 px-3 text-xs rounded-lg transition-all ${
-                              mintingMode === 'receive'
-                                ? 'bg-[#5cacc5] dark:bg-[#BA9901] text-white shadow-sm'
-                                : 'bg-transparent text-gray-600 dark:text-yellow-200 hover:bg-gray-50 dark:hover:bg-[#1a1400]'
-                            }`}
-                          >
-                            Mint by Receive
-                          </Button>
-                        </div>
-                      </div>
-
-                      {/* Mint Mode: User enters amount to mint */}
-                      {mintingMode === 'mint' && (
-                        <div className="space-y-2">
-                          <div className="flex gap-2">
-                            <Input
-                              id="mintAmount"
-                              type="number"
-                              placeholder="Enter amount to mint"
-                              value={mintAmount}
-                              onChange={(e) => {
-                                const inputValue = e.target.value;
-                                if (inputValue === '' || inputValue === '.') {
-                                  setMintAmount(inputValue);
-                                } else {
-                                  const numValue = Number(inputValue);
-                                  if (!isNaN(numValue) && numValue >= 0) {
-                                    // Only limit to max mintable amount if it exceeds the limit
-                                    if (numValue <= tokenDetails.maxMintableAmount) {
-                                      setMintAmount(inputValue);
-                                    } else {
-                                      setMintAmount(tokenDetails.maxMintableAmount.toString());
-                                    }
-                                  }
-                                }
-                              }}
-                              className="h-10 text-sm bg-white/60 dark:bg-[#2a1a00] border-2 border-gray-200 dark:border-yellow-400/20 text-gray-600 dark:text-yellow-200"
-                            />
-                            <Button
-                              type="button"
-                              onClick={() => {
-                                const safeMaxAmount = Math.max(0, tokenDetails.maxMintableAmount);
-                                // Maintain full precision for input, but limit displayed decimals for UX
-                                setMintAmount(safeMaxAmount.toString());
-                              }}
-                              disabled={tokenDetails.maxMintableAmount === 0}
-                              className="h-10 px-3 text-sm bg-gray-500 dark:bg-gray-600 hover:bg-gray-600 dark:hover:bg-gray-700 text-white rounded-xl whitespace-nowrap"
-                            >
-                              Max
-                            </Button>
-                          </div>
-                          {mintAmount && !isNaN(Number(mintAmount)) && Number(mintAmount) > 0 && (
-                            <div className="mt-2 p-2 rounded-xl bg-blue-50 dark:bg-yellow-400/10 border border-blue-200 dark:border-yellow-400/20">
-                              <p className="text-xs text-blue-600 dark:text-yellow-200">
-                                You will receive: <span 
-                                  className="font-bold cursor-help" 
-                                  title={`${userAmountAfterFees || 0} ${tokenDetails.tokenSymbol}`}
-                                >
-                                                                  {!isNaN(userAmountAfterFees) && userAmountAfterFees !== null ? (
-                                  formatNumber(userAmountAfterFees)
-                                ) : (
-                                  "0"
-                                )} {tokenDetails.tokenSymbol}
-                                </span>
-                                <br />
-                                Clowder fee: <span 
-                                  className="font-bold cursor-help" 
-                                  title={`${!isNaN(userAmountAfterFees) && userAmountAfterFees !== null ? Number(mintAmount) - userAmountAfterFees : 0} ${tokenDetails.tokenSymbol}`}
-                                >
-                                                                  {!isNaN(userAmountAfterFees) && userAmountAfterFees !== null ? (
-                                  formatNumber(Number(mintAmount) - userAmountAfterFees)
-                                ) : (
-                                  "0"
-                                )} {tokenDetails.tokenSymbol}
-                                </span>
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Receive Mode: User enters amount to receive */}
-                      {mintingMode === 'receive' && (
-                        <div className="space-y-2">
-                          <div className="flex gap-2">
-                            <Input
-                              id="receiveAmount"
-                              type="number"
-                              placeholder="Enter amount recipent should receive"
-                              value={receiveAmount}
-                              onChange={(e) => setReceiveAmount(e.target.value)}
-                              className="h-10 text-sm bg-white/60 dark:bg-[#2a1a00] border-2 border-gray-200 dark:border-yellow-400/20 text-gray-600 dark:text-yellow-200"
-                            />
-                            <Button
-                              type="button"
-                              onClick={() => {
-                                // Calculate precise max receive amount using exact smart contract fee calculation
-                                const maxMintableAmount = tokenDetails.maxMintableAmount;
-                                if (maxMintableAmount > 0) {
-                                  try {
-                                    const amountBigInt = parseUnits(maxMintableAmount.toString(), decimals);
-                                    const clowderFee = BigInt(500);
-                                    const denominator = BigInt(100000);
-                                    const feeAmountBigInt = (amountBigInt * clowderFee) / denominator;
-                                    const maxReceiveAmountBigInt = amountBigInt - feeAmountBigInt;
-                                    const maxReceiveAmount = formatUnits(maxReceiveAmountBigInt, decimals);
-                                    setReceiveAmount(maxReceiveAmount);
-                                  } catch (error) {
-                                    console.error('Error calculating max receive amount:', error);
-                                    setReceiveAmount('0');
-                                  }
-                                } else {
-                                  setReceiveAmount('0');
-                                }
-                              }}
-                              disabled={tokenDetails.maxMintableAmount === 0}
-                              className="h-10 px-3 text-sm bg-gray-500 dark:bg-gray-600 hover:bg-gray-600 dark:hover:bg-gray-700 text-white rounded-xl whitespace-nowrap"
-                            >
-                              Max
-                            </Button>
-                          </div>
-                          {receiveAmount && !isNaN(Number(receiveAmount)) && Number(receiveAmount) > 0 && (
-                            <div className="mt-2 p-2 rounded-xl bg-green-50 dark:bg-green-400/10 border border-green-200 dark:border-green-400/20">
-                              <p className="text-xs text-green-600 dark:text-green-200">
-                                Amount to mint: <span 
-                                  className="font-bold cursor-help" 
-                                  title={`${calculatedMintAmount || 0} ${tokenDetails.tokenSymbol}`}
-                                >
-                                                                  {!isNaN(calculatedMintAmount) && calculatedMintAmount !== null ? (
-                                  formatNumber(calculatedMintAmount)
-                                ) : (
-                                  "0"
-                                )} {tokenDetails.tokenSymbol}
-                                </span>
-                                <br />
-                                Clowder fee: <span 
-                                  className="font-bold cursor-help" 
-                                  title={`${!isNaN(calculatedMintAmount) && calculatedMintAmount !== null ? calculatedMintAmount - Number(receiveAmount) : 0} ${tokenDetails.tokenSymbol}`}
-                                >
-                                                                  {!isNaN(calculatedMintAmount) && calculatedMintAmount !== null ? (
-                                  formatNumber(calculatedMintAmount - Number(receiveAmount))
-                                ) : (
-                                  "0"
-                                )} {tokenDetails.tokenSymbol}
-                                </span>
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
+                                        {/* Receiver Address - First Field */}
                     <div className="space-y-2">
-                      <Label htmlFor="mintTo" className="text-sm font-bold text-gray-600 dark:text-yellow-200">Mint To Address</Label>
+                      <Label htmlFor="mintTo" className="text-sm font-bold text-gray-600 dark:text-yellow-200">Receiver Address</Label>
                       <Input
                         id="mintTo"
                         type="text"
@@ -1455,6 +1343,151 @@ export default function InteractionClient() {
                         onChange={(e) => setMintToAddress(e.target.value)}
                         className="h-10 text-sm bg-white/60 dark:bg-[#2a1a00] border-2 border-gray-200 dark:border-yellow-400/20 text-gray-600 dark:text-yellow-200"
                       />
+                    </div>
+
+                    {/* Dual Input Fields */}
+                    <div className="space-y-3">
+                      {/* Amount to Mint */}
+                      <div className="space-y-2">
+                        <Label htmlFor="mintAmount" className="text-sm font-bold text-gray-600 dark:text-yellow-200">Amount to Mint</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            id="mintAmount"
+                            type="number"
+                            placeholder="Enter amount to mint"
+                            value={mintAmount}
+                            onChange={(e) => {
+                              const inputValue = e.target.value;
+                              setLastEditedField('mint');
+                              if (inputValue === '' || inputValue === '.') {
+                                setMintAmount(inputValue);
+                              } else {
+                                const numValue = Number(inputValue);
+                                if (!isNaN(numValue) && numValue >= 0) {
+                                  // Only limit to max mintable amount if it exceeds the limit
+                                  if (numValue <= tokenDetails.maxMintableAmount) {
+                                    setMintAmount(inputValue);
+                                  } else {
+                                    setMintAmount(tokenDetails.maxMintableAmount.toString());
+                                  }
+                                }
+                              }
+                            }}
+                            className="h-10 text-sm bg-white/60 dark:bg-[#2a1a00] border-2 border-gray-200 dark:border-yellow-400/20 text-gray-600 dark:text-yellow-200"
+                          />
+                          <Button
+                            type="button"
+                            onClick={() => {
+                              const safeMaxAmount = Math.max(0, tokenDetails.maxMintableAmount);
+                              setLastEditedField('mint');
+                              setMintAmount(safeMaxAmount.toString());
+                            }}
+                            disabled={tokenDetails.maxMintableAmount === 0}
+                            className="h-10 px-3 text-sm bg-gray-500 dark:bg-gray-600 hover:bg-gray-600 dark:hover:bg-gray-700 text-white rounded-xl whitespace-nowrap"
+                          >
+                            Max
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Amount to be Received */}
+                      <div className="space-y-2">
+                        <Label htmlFor="receiveAmount" className="text-sm font-bold text-gray-600 dark:text-yellow-200">Amount to be Received</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            id="receiveAmount"
+                            type="number"
+                            placeholder="Enter amount recipient should receive"
+                            value={receiveAmount}
+                                                         onChange={(e) => {
+                               const inputValue = e.target.value;
+                               setLastEditedField('receive');
+                               if (inputValue === '' || inputValue === '.') {
+                                 setReceiveAmount(inputValue);
+                               } else {
+                                 const numValue = Number(inputValue);
+                                 if (!isNaN(numValue) && numValue >= 0) {
+                                   // Calculate max receivable amount based on max mintable amount
+                                   const maxMintableAmount = tokenDetails.maxMintableAmount;
+                                   let maxReceivableAmount = 0;
+                                   if (maxMintableAmount > 0) {
+                                     try {
+                                       const amountBigInt = parseUnits(maxMintableAmount.toString(), decimals);
+                                       const clowderFee = BigInt(500);
+                                       const denominator = BigInt(100000);
+                                       const feeAmountBigInt = (amountBigInt * clowderFee) / denominator;
+                                       const maxReceiveAmountBigInt = amountBigInt - feeAmountBigInt;
+                                       maxReceivableAmount = Number(formatUnits(maxReceiveAmountBigInt, decimals));
+                                     } catch (error) {
+                                       console.error('Error calculating max receivable amount:', error);
+                                     }
+                                   }
+                                   
+                                   // Only allow values up to max receivable amount
+                                   if (numValue <= maxReceivableAmount) {
+                                     setReceiveAmount(inputValue);
+                                   } else {
+                                     setReceiveAmount(maxReceivableAmount.toString());
+                                   }
+                                 }
+                               }
+                             }}
+                            className="h-10 text-sm bg-white/60 dark:bg-[#2a1a00] border-2 border-gray-200 dark:border-yellow-400/20 text-gray-600 dark:text-yellow-200"
+                          />
+                          <Button
+                            type="button"
+                            onClick={() => {
+                              // Calculate precise max receive amount using exact smart contract fee calculation
+                              const maxMintableAmount = tokenDetails.maxMintableAmount;
+                              setLastEditedField('receive');
+                              if (maxMintableAmount > 0) {
+                                try {
+                                  const amountBigInt = parseUnits(maxMintableAmount.toString(), decimals);
+                                  const clowderFee = BigInt(500);
+                                  const denominator = BigInt(100000);
+                                  const feeAmountBigInt = (amountBigInt * clowderFee) / denominator;
+                                  const maxReceiveAmountBigInt = amountBigInt - feeAmountBigInt;
+                                  const maxReceiveAmount = formatUnits(maxReceiveAmountBigInt, decimals);
+                                  setReceiveAmount(maxReceiveAmount);
+                                } catch (error) {
+                                  console.error('Error calculating max receive amount:', error);
+                                  setReceiveAmount('0');
+                                }
+                              } else {
+                                setReceiveAmount('0');
+                              }
+                            }}
+                            disabled={tokenDetails.maxMintableAmount === 0}
+                            className="h-10 px-3 text-sm bg-gray-500 dark:bg-gray-600 hover:bg-gray-600 dark:hover:bg-gray-700 text-white rounded-xl whitespace-nowrap"
+                          >
+                            Max
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Show Clowder Fee */}
+                      {((mintAmount && !isNaN(Number(mintAmount)) && Number(mintAmount) > 0) || 
+                        (receiveAmount && !isNaN(Number(receiveAmount)) && Number(receiveAmount) > 0)) && (
+                        <div className="mt-2 p-2 rounded-xl bg-blue-50 dark:bg-yellow-400/10 border border-blue-200 dark:border-yellow-400/20">
+                          <p className="text-xs text-blue-600 dark:text-yellow-200">
+                            <span className="font-semibold">Clowder fee: </span>
+                            <span 
+                              className="font-bold cursor-help" 
+                              title={`${
+                                mintAmount && receiveAmount && !isNaN(Number(mintAmount)) && !isNaN(Number(receiveAmount)) && Number(mintAmount) > 0 && Number(receiveAmount) > 0
+                                  ? Number(mintAmount) - Number(receiveAmount)
+                                  : 0
+                              } ${tokenDetails.tokenSymbol}`}
+                            >
+                              {
+                                mintAmount && receiveAmount && !isNaN(Number(mintAmount)) && !isNaN(Number(receiveAmount)) && Number(mintAmount) > 0 && Number(receiveAmount) > 0
+                                  ? formatNumber(Number(mintAmount) - Number(receiveAmount))
+                                  : "0"
+                              } {tokenDetails.tokenSymbol}
+                            </span>
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="mt-6">
@@ -1465,8 +1498,7 @@ export default function InteractionClient() {
                         isMinting || 
                         isSigning || 
                         (!isUserMinter && !isUserAdmin) ||
-                        (mintingMode === 'mint' && (!mintAmount || isNaN(Number(mintAmount)) || Number(mintAmount) <= 0)) ||
-                        (mintingMode === 'receive' && (!receiveAmount || isNaN(Number(receiveAmount)) || Number(receiveAmount) <= 0 || calculatedMintAmount <= 0))
+                        (!mintAmount || isNaN(Number(mintAmount)) || Number(mintAmount) <= 0)
                       }
                       className="w-full h-10 text-sm bg-[#5cacc5] dark:bg-[#BA9901] hover:bg-[#4a9db5] dark:hover:bg-[#a88a01] text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed"
                     >
