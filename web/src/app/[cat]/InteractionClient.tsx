@@ -225,7 +225,7 @@ export default function InteractionClient() {
       setIsSyncing(true);
       console.log('Fetching token details from blockchain...', { tokenAddress, chainId });
       
-      const publicClient = getPublicClient(config, { chainId: chainId as any });
+      const publicClient = getPublicClient(config, { chainId });
       if (!publicClient) {
         throw new Error(`No public client available for chain ${chainId}`);
       }

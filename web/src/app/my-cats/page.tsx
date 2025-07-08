@@ -187,7 +187,7 @@ export default function MyCATsPage() {
       for (const [chainId, factoryAddress] of Object.entries(ClowderVaultFactories)) {
         if (!isValidChainId(chainId)) continue;
 
-        const publicClient = getPublicClient(config, { chainId: Number(chainId) as any });
+        const publicClient = getPublicClient(config, { chainId });
         if (!publicClient) continue;
 
         try {
@@ -596,7 +596,7 @@ export default function MyCATsPage() {
     chainId: SupportedChainId, 
     defaultRole: 'admin' | 'minter' | 'both'
   ): Promise<CatDetails[]> => {
-    const publicClient = getPublicClient(config, { chainId: chainId as any });
+    const publicClient = getPublicClient(config, { chainId });
     if (!publicClient || !addresses.length) return [];
 
     try {
