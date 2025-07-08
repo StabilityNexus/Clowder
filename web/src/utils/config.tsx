@@ -13,10 +13,10 @@ export const config = getDefaultConfig({
   appName: "clowder",
   projectId: process.env.NEXT_PUBLIC_PROJECT_ID ?? "",
   chains: [
+    ethereumClassic,
     scrollSepolia,
     base,
     polygon,
-    ethereumClassic,
     citreaTestnet,
   ] as const,
   ssr: true, // Disable SSR for static export
