@@ -19,25 +19,22 @@ import { useCATStorage } from "@/hooks/useCATStorage";
 import { SupportedChainId, CatDetails as StoredCatDetails } from "@/utils/indexedDB";
 import toast from "react-hot-toast";
 
-// Define supported chain IDs - use the imported type from IndexedDB
-// type SupportedChainId = 137 | 534351 | 5115 | 61 | 8453;
-
 // Chain ID to name mapping
 const CHAIN_NAMES: Record<SupportedChainId, string> = {
-  // 137: "Polygon",
-  // 534351: "Scroll Sepolia",
+  137: "Polygon",
+  534351: "Scroll Sepolia",
   5115: "Citrea Testnet",
-  // 61: "Ethereum Classic",
-  // 8453: "Base Mainnet",
+  61: "Ethereum Classic",
+  8453: "Base Mainnet",
 };
 
 // Chain colors for visual distinction
 const CHAIN_COLORS: Record<SupportedChainId, string> = {
-  // 137: "bg-purple-500",
-  // 534351: "bg-orange-500", 
+  137: "bg-purple-500",
+  534351: "bg-orange-500", 
   5115: "bg-yellow-500",
-  // 61: "bg-green-500",
-  // 8453: "bg-blue-500",
+  61: "bg-green-500",
+  8453: "bg-blue-500",
 };
 
 interface CatDetails {
@@ -60,8 +57,7 @@ interface PaginationInfo {
 const isValidChainId = (
   chainId: number | string
 ): chainId is SupportedChainId => {
-  // const validChainIds: SupportedChainId[] = [137, 534351, 5115, 61, 8453];
-  const validChainIds: SupportedChainId[] = [5115];
+  const validChainIds: SupportedChainId[] = [137, 534351, 5115, 61, 8453];
   return validChainIds.includes(Number(chainId) as SupportedChainId);
 };
 
@@ -191,7 +187,7 @@ export default function MyCATsPage() {
       for (const [chainId, factoryAddress] of Object.entries(ClowderVaultFactories)) {
         if (!isValidChainId(chainId)) continue;
 
-        const publicClient = getPublicClient(config, { chainId: Number(chainId) as SupportedChainId });
+        const publicClient = getPublicClient(config, { chainId: Number(chainId) as any });
         if (!publicClient) continue;
 
         try {
@@ -600,7 +596,7 @@ export default function MyCATsPage() {
     chainId: SupportedChainId, 
     defaultRole: 'admin' | 'minter' | 'both'
   ): Promise<CatDetails[]> => {
-    const publicClient = getPublicClient(config, { chainId });
+    const publicClient = getPublicClient(config, { chainId: chainId as any });
     if (!publicClient || !addresses.length) return [];
 
     try {

@@ -21,11 +21,11 @@ import { showTransactionToast } from "@/components/ui/transaction-toast"
 
 
 const supportedChains = [
-  // { id: "534351", name: "Scroll Sepolia" },
+  { id: "534351", name: "Scroll Sepolia" },
   { id: "5115", name: "Citrea Testnet" },
-  // { id: "61", name: "Ethereum Classic" },
-  // { id: "8453", name: "Base Mainnet" },
-  // { id: "137", name: "Polygon Mainnet" },
+  { id: "61", name: "Ethereum Classic" },
+  { id: "8453", name: "Base Mainnet" },
+  { id: "137", name: "Polygon Mainnet" },
 ];
 
 const contact_links = [

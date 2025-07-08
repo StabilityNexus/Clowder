@@ -5,25 +5,24 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, Check, Network } from "lucide-react";
 
 // Define supported chain IDs
-// type SupportedChainId = 137 | 534351 | 5115 | 61 | 8453;
-type SupportedChainId = 5115;
+type SupportedChainId = 137 | 534351 | 5115 | 61 | 8453;
 
 // Chain ID to name mapping
 const CHAIN_NAMES: Record<SupportedChainId, string> = {
-  // 137: "Polygon",
-  // 534351: "Scroll Sepolia", 
+  137: "Polygon",
+  534351: "Scroll Sepolia", 
   5115: "Citrea Testnet",
-  // 61: "Ethereum Classic",
-  // 8453: "Base Mainnet",
+  61: "Ethereum Classic",
+  8453: "Base Mainnet",
 };
 
 // Chain colors for visual distinction
 const CHAIN_COLORS: Record<SupportedChainId, string> = {
-  // 137: "bg-purple-500",
-  // 534351: "bg-orange-500",
+  137: "bg-purple-500",
+  534351: "bg-orange-500",
   5115: "bg-yellow-500", 
-  // 61: "bg-green-500",
-  // 8453: "bg-blue-500",
+  61: "bg-green-500",
+  8453: "bg-blue-500",
 };
 
 interface ChainDropdownProps {

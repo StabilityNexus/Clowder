@@ -1,8 +1,7 @@
 // IndexedDB service for storing CAT and token data
 // Following best practices with versioning, proper indexing, and error handling
 
-// export type SupportedChainId = 137 | 534351 | 5115 | 61 | 8453;
-export type SupportedChainId = 5115;
+export type SupportedChainId = 137 | 534351 | 5115 | 61 | 8453;
 
 export interface CatDetails {
   chainId: SupportedChainId;
