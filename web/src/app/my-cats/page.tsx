@@ -187,10 +187,13 @@ export default function MyCATsPage() {
       for (const [chainId, factoryAddress] of Object.entries(ClowderVaultFactories)) {
         if (!isValidChainId(chainId)) continue;
 
-        const publicClient = getPublicClient(config, { chainId });
+        const numericChainId = Number(chainId) as SupportedChainId;
+        const publicClient = getPublicClient(config, { chainId: numericChainId });
         if (!publicClient) continue;
 
         try {
+          console.log(`Checking chain ${numericChainId} (${CHAIN_NAMES[numericChainId]}) for CATs...`);
+          
           // Get creator CATs
           const creatorCount = await publicClient.readContract({
             address: factoryAddress as `0x${string}`,
@@ -199,6 +202,8 @@ export default function MyCATsPage() {
             args: [address as `0x${string}`],
           }) as bigint;
 
+          console.log(`Chain ${numericChainId}: Found ${Number(creatorCount)} creator CATs`);
+          
           if (Number(creatorCount) > 0) {
             const creatorAddresses = await publicClient.readContract({
               address: factoryAddress as `0x${string}`,
@@ -207,7 +212,8 @@ export default function MyCATsPage() {
               args: [address as `0x${string}`, BigInt(0), creatorCount],
             }) as `0x${string}`[];
 
-            const creatorCATs = await fetchCATDetails(creatorAddresses, Number(chainId) as SupportedChainId, 'admin');
+            console.log(`Chain ${numericChainId}: Creator CAT addresses:`, creatorAddresses);
+            const creatorCATs = await fetchCATDetails(creatorAddresses, numericChainId, 'admin');
             allCATs.push(...creatorCATs);
           }
 
@@ -219,6 +225,8 @@ export default function MyCATsPage() {
             args: [address as `0x${string}`],
           }) as bigint;
 
+          console.log(`Chain ${numericChainId}: Found ${Number(minterCount)} minter CATs`);
+          
           if (Number(minterCount) > 0) {
             const minterAddresses = await publicClient.readContract({
               address: factoryAddress as `0x${string}`,
@@ -227,7 +235,8 @@ export default function MyCATsPage() {
               args: [address as `0x${string}`, BigInt(0), minterCount],
             }) as `0x${string}`[];
 
-            const minterCATs = await fetchCATDetails(minterAddresses, Number(chainId) as SupportedChainId, 'minter');
+            console.log(`Chain ${numericChainId}: Minter CAT addresses:`, minterAddresses);
+            const minterCATs = await fetchCATDetails(minterAddresses, numericChainId, 'minter');
             allCATs.push(...minterCATs);
           }
         } catch (error) {
@@ -239,6 +248,7 @@ export default function MyCATsPage() {
       console.error('Error fetching all CATs from blockchain:', error);
     }
 
+    console.log(`Total CATs found across all chains: ${allCATs.length}`, allCATs);
     return allCATs;
   }, [address]);
 
@@ -538,6 +548,20 @@ export default function MyCATsPage() {
     
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
+        console.log(`Attempting to fetch details for CAT ${catAddress} on chain ${chainId} (attempt ${attempt + 1})`);
+        
+        // First, check if the address is a contract by trying to get bytecode
+        try {
+          const bytecode = await publicClient.getBytecode({ address: catAddress });
+          if (!bytecode || bytecode === '0x') {
+            console.warn(`Address ${catAddress} is not a contract or has no bytecode`);
+            return null; // Skip this address
+          }
+        } catch (bytecodeError) {
+          console.warn(`Could not verify bytecode for ${catAddress}:`, bytecodeError);
+          // Continue anyway, as some RPCs might not support getBytecode
+        }
+
         const [tokenName, tokenSymbol] = await Promise.all([
           publicClient.readContract({
             address: catAddress,
@@ -551,11 +575,19 @@ export default function MyCATsPage() {
           }) as Promise<string>,
         ]);
 
+        // Validate that we got meaningful data
+        if (!tokenName && !tokenSymbol) {
+          console.warn(`Contract ${catAddress} returned empty name and symbol`);
+          return null;
+        }
+
+        console.log(`Successfully fetched CAT details: ${tokenName} (${tokenSymbol}) at ${catAddress}`);
+        
         return {
           chainId,
           address: catAddress,
-          tokenName: tokenName || "",
-          tokenSymbol: tokenSymbol || "",
+          tokenName: tokenName || `CAT ${catAddress.slice(0, 6)}...${catAddress.slice(-4)}`,
+          tokenSymbol: tokenSymbol || "CAT",
           userRole: defaultRole,
         };
       } catch (error: unknown) {
@@ -564,16 +596,31 @@ export default function MyCATsPage() {
                            errorObj?.status === 429 ||
                            errorObj?.code === -32016;
         
+        const isContractError = errorObj?.message?.includes('returned no data') ||
+                               errorObj?.message?.includes('does not have the function') ||
+                               errorObj?.message?.includes('address is not a contract');
+        
+        console.warn(`Error fetching CAT ${catAddress} (attempt ${attempt + 1}):`, error);
+        
+        if (isContractError) {
+          // This is likely an invalid contract, skip it
+          console.warn(`Skipping invalid contract ${catAddress}`);
+          return null;
+        }
+        
         if (attempt === maxRetries - 1) {
-          // Final attempt failed - return fallback
-          console.error(`Failed to fetch CAT ${catAddress} after ${maxRetries} attempts:`, error);
-          return {
-            chainId,
-            address: catAddress,
-            tokenName: `CAT ${catAddress.slice(0, 6)}...${catAddress.slice(-4)}`,
-            tokenSymbol: "CAT",
-            userRole: defaultRole,
-          };
+          // Final attempt failed - return fallback only for non-contract errors
+          if (!isContractError) {
+            console.error(`Failed to fetch CAT ${catAddress} after ${maxRetries} attempts, using fallback:`, error);
+            return {
+              chainId,
+              address: catAddress,
+              tokenName: `CAT ${catAddress.slice(0, 6)}...${catAddress.slice(-4)}`,
+              tokenSymbol: "CAT",
+              userRole: defaultRole,
+            };
+          }
+          return null;
         }
         
         if (isRateLimit) {
@@ -581,8 +628,8 @@ export default function MyCATsPage() {
           const delayMs = 1000 * Math.pow(2, attempt); // 1s, 2s, 4s
           console.log(`Rate limit hit for ${catAddress}, retrying in ${delayMs}ms... (attempt ${attempt + 1})`);
           await delay(delayMs);
-        } else {
-          // Non-rate-limit error - don't retry
+        } else if (!isContractError) {
+          // Non-rate-limit, non-contract error - don't retry
           throw error;
         }
       }
