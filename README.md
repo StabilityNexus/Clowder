@@ -43,8 +43,8 @@ To set up Clowder locally, follow these steps:
 2. Install Dependencies
     Install the required packages using your preferred package manager:
 
-    bash
-    Copy
+ 
+   ```bash
     npm install
     # or
     yarn install
@@ -64,9 +64,8 @@ To set up Clowder locally, follow these steps:
 5. Run the Development Server
     Start the local development server:
 
+   ```bash
     npm run dev
     # or
     yarn dev
-
-
 Your application should now be running on http://localhost:3000.
