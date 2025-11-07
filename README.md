@@ -40,6 +40,7 @@ To set up Clowder locally, follow these steps:
    ```bash
    git clone https://github.com/your-username/clowder.git
    cd clowder
+   ```
 2. Install Dependencies
     Install the required packages using your preferred package manager:
 
@@ -48,7 +49,7 @@ To set up Clowder locally, follow these steps:
     npm install
     # or
     yarn install
-
+   ```
 3. Set Up Environment Variables
     Create a .env file in the root directory of the project and add the following environment variable:
     NEXT_PUBLIC_PROJECT_ID=your-project-id
@@ -68,4 +69,5 @@ To set up Clowder locally, follow these steps:
     npm run dev
     # or
     yarn dev
-Your application should now be running on http://localhost:3000.
+   ```
+Your application should now be running on <http://localhost:3000>.
