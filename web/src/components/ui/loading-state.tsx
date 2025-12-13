@@ -19,7 +19,7 @@ export function LoadingState({
   return (
     <div className="min-h-screen mx-auto">
       <div className="max-w-7xl mx-auto space-y-8 px-4 py-12">
-        <div className="text-center mb-12">
+        <div className="text-center mb-12 overflow-visible">
           <motion.div
             className={`w-24 h-24 mx-auto mb-8 rounded-full bg-gradient-to-br ${
               type === "loading"
@@ -41,6 +41,7 @@ export function LoadingState({
                 ? "from-blue-600 to-blue-200 dark:from-[#FFD600] dark:to-white"
                 : "from-red-600 to-red-200 dark:from-red-400 dark:to-red-200"
             } mb-4`}
+            style={{ lineHeight: '1.3', paddingBottom: '0.25rem' }}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}

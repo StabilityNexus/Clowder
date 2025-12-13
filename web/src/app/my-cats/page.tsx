@@ -691,9 +691,10 @@ export default function MyCATsPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <div className="flex flex-col md:flex-row justify-between items-center mb-12">
+            <div className="flex flex-col md:flex-row justify-between items-center mb-12 overflow-visible">
               <motion.h1
                 className="text-4xl md:text-5xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-blue-300 dark:from-[#FFD600] dark:to-yellow-100 mb-4 md:mb-0 drop-shadow-lg"
+                style={{ lineHeight: '1.3', paddingBottom: '0.25rem' }}
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
