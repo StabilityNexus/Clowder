@@ -1,136 +1,189 @@
-# Clowder
+<!-- Don't delete it -->
+<div name="readme-top"></div>
 
-A minimalistic platform for creating and managing Contribution Accounting Tokens (CATs).
+<!-- Organization Logo -->
+<div align="center">
+  <img alt="Stability Nexus" src="public/stability.svg" width="175">
+  &nbsp;&nbsp;&nbsp;
+  <img src="public/plusSign.svg" width="30" height="175" />
+  &nbsp;&nbsp;&nbsp;
+  <img src="public/clowder-logo.svg" width="175" />
+</div>
 
-## Overview
+&nbsp;
 
-Clowder enables anyone to create CATs, which are fungible tokens designed to track the value of contributions to projects within decentralized organizations. The name "Clowder" is derived from the collective noun for cats.
+<!-- Organization Name -->
+<div align="center">
 
-For more information about CATs, visit the [official documentation](https://docs.stability.nexus/about-us/the-stable-order/cats).
+[![Static Badge](https://img.shields.io/badge/Stability_Nexus-/Clowder-228B22?style=for-the-badge&labelColor=FFC517)](https://clowder.stability.nexus)
 
-## CAT Token Characteristics
+</div>
 
-CATs are ERC20-compatible tokens with the following key features:
+<!-- Socials -->
+<p align="center">
+<a href="https://t.me/StabilityNexus">
+<img src="https://img.shields.io/badge/Telegram-black?style=flat&logo=telegram&logoColor=white&color=24A1DE"/></a>
+&nbsp;&nbsp;
+<a href="https://x.com/StabilityNexus">
+<img src="https://img.shields.io/twitter/follow/StabilityNexus"/></a>
+&nbsp;&nbsp;
+<a href="https://discord.gg/YzDKeEfWtS">
+<img src="https://img.shields.io/discord/995968619034984528?style=flat&logo=discord&logoColor=white&label=Discord&labelColor=5865F2&color=57F287"/></a>
+&nbsp;&nbsp;
+<a href="https://news.stability.nexus/">
+<img src="https://img.shields.io/badge/Medium-black?style=flat&logo=medium&color=white"/></a>
+&nbsp;&nbsp;
+<a href="https://linkedin.com/company/stability-nexus">
+<img src="https://img.shields.io/badge/LinkedIn-black?style=flat&logo=LinkedIn&color=0A66C2"/></a>
+&nbsp;&nbsp;
+<a href="https://www.youtube.com/@StabilityNexus">
+<img src="https://img.shields.io/youtube/channel/subscribers/UCZOG4YhFQdlGaLugr_e5BKw?style=flat&logo=youtube&labelColor=FF0000&color=FF0000"/></a>
+</p>
 
-1. **Zero Initial Supply**: Tokens begin with no initial supply.
-2. **Owner-Based Management**: The deployer becomes the initial owner with multi-owner support.
-3. **Minting Permissions**: All owners have permission to mint new tokens.
-4. **Supply Controls**:
-   - Optional maximum supply cap
-   - Threshold supply below which minting is unrestricted
-   - Maximum supply expansion rate enforced above the threshold
-5. **Governance Flexibility**: Owners can permanently reduce maximum supply, threshold supply, and expansion rates.
-6. **Transfer Restrictions**: Optional restriction of transfers to existing token holders to maintain member-only circulation.
-7. **Permanent Restriction Removal**: Owners can permanently disable transfer restrictions.
+&nbsp;
 
-## Platform Features
+<p align="center">
+  <strong>
+    Clowder is a minimalistic platform for creating and managing CATs (Contribution Accounting Tokens) — fungible tokens used to track value contributions inside decentralized organizations.
+  </strong>
+</p>
+
+---
+
+# 🐾 Clowder
+
+> Fun fact: **A group of cats is called a "clowder".**  
+Just like that, Clowder groups and tracks contributions from multiple members inside decentralized projects.
+
+Clowder enables anyone to deploy a **CAT (Contribution Accounting Token)** with customizable minting rules and governance parameters.  
+These tokens serve as transparent accounting tools for DAOs and community-driven projects.
+
+Learn more about CATs:  
+👉 https://docs.stability.nexus/about-us/the-stable-order/cats
+
+---
+
+# 🧬 CAT Token Characteristics
+
+Each CAT contract created through Clowder has the following properties:
+
+1. Initial supply starts at **zero**.  
+2. The deployer becomes the **initial owner**.  
+3. CATs can have **multiple owners**.  
+4. **All owners can mint** tokens.  
+5. **Optional maximum supply** to prevent inflation.  
+6. **Threshold supply** defines unrestricted minting.  
+7. **Maximum expansion rate** limits inflation above the threshold.  
+8. Owners may **permanently decrease** max supply and threshold.  
+9. Owners may **reduce** expansion rate permanently.  
+10. Transfers may be **restricted to existing holders**.  
+11. Owners may **permanently disable** transfer restrictions.
 
 ### Frontend Pages
 
-**Landing Page**
-- Create new CAT tokens
-- Access existing CAT contracts by address
-- Quick navigation to CAT management interface
+# 🖥 Platform Frontend Pages
 
-**CAT Page**
-- View token contract parameters and variables
-- Display current supply, maximum supply, threshold supply, and expansion rate
-- Show transfer restriction status
-- Owner-specific interface for minting and parameter modification
+### **1. Landing Page**
+- “Create CAT” button → Navigates to CAT Creation  
+- Input field → User enters a CAT contract address  
+- “Use CAT” button → Navigates to CAT Page for that contract  
 
-**Create CAT Page**
-- Interactive form for constructor parameters
-- Direct deployment through factory contract
+### **2. CAT Page**
+Displays full CAT state:
+- Total supply  
+- Max supply  
+- Threshold  
+- Max expansion rate  
+- Transfer restriction status  
 
-**My CATs Page**
-- Comprehensive list of all owned token contracts
-- Wallet-connected user view
+If wallet is connected **and user is an owner**, the page also allows:
+- Minting tokens  
+- Updating parameters  
 
-### Technical Stack
+### **3. Create CAT Page**
+- Form to input constructor parameters  
+- “Deploy CAT” button triggers contract deployment via factory  
 
-- **Frontend Framework**: Next.js
-- **Styling**: TailwindCSS
-- **UI Components**: ShadCN UI
-- **Architecture**: Serverless (no backend required)
-- **Storage**: On-chain storage via factory contract
+### **4. My CATs Page**
+- Shows all CAT token contracts **owned by the connected wallet**  
+- No backend — ownership mapping is stored in the factory contract  
 
-## Local Development Setup
+---
 
-### Prerequisites
+# 🛠 Tech Stack
 
-- Node.js and npm (or yarn)
-- Git
+- **Next.js**  
+- **TailwindCSS**  
+- **ShadCN UI**  
+- **Viem / Wagmi** for blockchain interactions  
+- **Factory contract** stores CAT ownership mapping  
 
-### Installation
+---
 
-1. Clone the repository:
+# 🧪 Local Setup Instructions
+
+Follow these steps to run Clowder locally.
+
+---
+
+## 1. Clone the Repository
+
 ```bash
-git clone https://github.com/StabilityNexus/Clowder.git
-cd Clowder
+git clone https://github.com/your-username/clowder.git
+cd clowder
 ```
 
-2. Install dependencies:
+---
+
+## 2. Install Dependencies
+
 ```bash
 npm install
 # or
 yarn install
 ```
 
-3. Configure environment variables:
+---
 
-Create a `.env` file in the root directory:
+## 3. Set Environment Variables
+
+Create a `.env` file in the project root:
+
 ```
 NEXT_PUBLIC_PROJECT_ID=your-project-id
 ```
 
-4. Obtain your Project ID:
-   - Navigate to [https://cloud.reown.com/](https://cloud.reown.com/)
-   - Create an account or sign in
-   - Create a new project
-   - Copy the Project ID from your project dashboard
-   - Add it to your `.env` file
+---
 
-5. Start the development server:
+## 4. Obtain Your Project ID
+
+1. Go to https://cloud.reown.com  
+2. Log in or create an account  
+3. Create a new project  
+4. Locate the **Project ID / API Key**  
+5. Place it in your `.env` file  
+
+---
+
+## 5. Run the Development Server
+
 ```bash
 npm run dev
 # or
 yarn dev
 ```
 
-The application will be available at [http://localhost:3000](http://localhost:3000).
+Your app will be available at:
 
-## Project Structure
+👉 http://localhost:3000
 
-```
-Clowder/
-├── contracts/       # Smart contract source files
-├── test/           # Contract test suites
-├── web/            # Next.js frontend application
-├── .github/        # GitHub Actions workflows
-└── hardhat.config.js
-```
+---
 
-## Smart Contract Development
+# 🌍 Community
 
-The project uses Hardhat for smart contract development and testing. Key configuration files:
+- Stability Nexus Docs — https://docs.stability.nexus/  
+- Discord — https://discord.gg/YzDKeEfWtS  
 
-- `hardhat.config.js`: Hardhat configuration
-- `contracts/`: Solidity smart contracts
-- `test/`: Contract test files
+---
 
-## Contributing
-
-Contributions are welcome. Please ensure all tests pass before submitting pull requests.
-
-## License
-
-Please refer to the repository for license information.
-
-## Links
-
-- [CAT Documentation](https://docs.stability.nexus/about-us/the-stable-order/cats)
-- [Reown Cloud](https://cloud.reown.com/)
-
-## Support
-
-For issues and questions, please use the GitHub Issues section of this repository.
+© 2025 The Stable Order
