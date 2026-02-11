@@ -1,72 +1,136 @@
 # Clowder
 
-> Fun fact: "Clowder" is the collective noun for cats.
+A minimalistic platform for creating and managing Contribution Accounting Tokens (CATs).
 
-Clowder is a minimalistic platform allowing anyone to create [CATs (Contribution Accounting Tokens)](https://docs.stability.nexus/about-us/the-stable-order/cats).
+## Overview
 
-CATs are fungible tokens (e.g. ERC20 tokens) that are used to track the value of contributions to a project by members of a decentralized organization. CATs have the following characteristics:
+Clowder enables anyone to create CATs, which are fungible tokens designed to track the value of contributions to projects within decentralized organizations. The name "Clowder" is derived from the collective noun for cats.
 
-1. The initial supply of tokens is zero.
-2. The user who deploys the token contract is its initial owner.
-3. The contract may have multiple owners and owners may grant ownership to others.
-4. All owners have permission to mint tokens.
-5. There is an optional maximum supply of tokens, above which minting is forbidden.
-6. There is a threshold supply of tokens, below which minting is unrestricted.
-7. There is a maximum supply expansion rate that is enforced when the supply exceeds the threshold.
-8. Owners have permission to permanently reduce the maximum supply of tokens and the threshold supply of tokens.
-9. Owners have permission to permanently reduce the maximum supply expansion rate.
-10. Transfers of tokens may be restricted to accounts that already have tokens, in order to keep the tokens circulating only among members of a project.
-11. Owners may permanently disable the transfer restriction.
+For more information about CATs, visit the [official documentation](https://docs.stability.nexus/about-us/the-stable-order/cats).
 
-The platform's frontend has the following pages:
+## CAT Token Characteristics
 
-- **Landing Page**: This page has a "Create CAT" button (which redirects to the *CAT Creation Page*), a text field for the user to input a CAT contract address, and a "Use CAT" button (which redirects to the *CAT Page* for the CAT contract input in the text field).
-- **CAT Page**: This page reads from the URL the address of the token contract and allows users to interact with the respective token contract. It shows parameters and variables of the token contract such as current supply, maximum supply, threshold supply, maximum expansion rate, and transfer restriction. For owners who have connected their wallets, it also shows fields and buttons to mint tokens and to modify the parameters of the token contract.
-- **Create CAT Page**: This page shows a form where the user can input the constructor parameters for the desired CAT and a "Deploy CAT" button that calls the factory contract to deploy the CAT with the desired parameters.
-- **My CATs Page**: This page lists all token contracts owned by the user who connected their wallet.
+CATs are ERC20-compatible tokens with the following key features:
 
-The platform's frontend is built with Next.js, TailwindCSS, and ShadCN UI.
+1. **Zero Initial Supply**: Tokens begin with no initial supply.
+2. **Owner-Based Management**: The deployer becomes the initial owner with multi-owner support.
+3. **Minting Permissions**: All owners have permission to mint new tokens.
+4. **Supply Controls**:
+   - Optional maximum supply cap
+   - Threshold supply below which minting is unrestricted
+   - Maximum supply expansion rate enforced above the threshold
+5. **Governance Flexibility**: Owners can permanently reduce maximum supply, threshold supply, and expansion rates.
+6. **Transfer Restrictions**: Optional restriction of transfers to existing token holders to maintain member-only circulation.
+7. **Permanent Restriction Removal**: Owners can permanently disable transfer restrictions.
 
-The platform has no backend. The list of token contracts owned by each address is stored in the factory contract.
+## Platform Features
 
----
+### Frontend Pages
 
-## Local Setup Instructions
+**Landing Page**
+- Create new CAT tokens
+- Access existing CAT contracts by address
+- Quick navigation to CAT management interface
 
-To set up Clowder locally, follow these steps:
+**CAT Page**
+- View token contract parameters and variables
+- Display current supply, maximum supply, threshold supply, and expansion rate
+- Show transfer restriction status
+- Owner-specific interface for minting and parameter modification
 
-1. **Clone the Repository**  
-   Clone this repository to your local machine:
-   ```bash
-   git clone https://github.com/your-username/clowder.git
-   cd clowder
-2. Install Dependencies
-    Install the required packages using your preferred package manager:
+**Create CAT Page**
+- Interactive form for constructor parameters
+- Direct deployment through factory contract
 
-    bash
-    Copy
-    npm install
-    # or
-    yarn install
+**My CATs Page**
+- Comprehensive list of all owned token contracts
+- Wallet-connected user view
 
-3. Set Up Environment Variables
-    Create a .env file in the root directory of the project and add the following environment variable:
-    NEXT_PUBLIC_PROJECT_ID=your-project-id
+### Technical Stack
 
-4. Obtain Your Project ID
-    To get the your-project-id value for NEXT_PUBLIC_PROJECT_ID, follow these steps:
-    Go to https://cloud.reown.com/.
-    Create an account or log in if you already have one.
-    Create a new project within the dashboard.
-    Once the project is created, locate your project key (this might be labeled as "Project ID" or "API Key").
-    Copy this key and paste it into your .env file as the value for NEXT_PUBLIC_PROJECT_ID.
+- **Frontend Framework**: Next.js
+- **Styling**: TailwindCSS
+- **UI Components**: ShadCN UI
+- **Architecture**: Serverless (no backend required)
+- **Storage**: On-chain storage via factory contract
 
-5. Run the Development Server
-    Start the local development server:
+## Local Development Setup
 
-    npm run dev
-    # or
-    yarn dev
+### Prerequisites
 
+- Node.js and npm (or yarn)
+- Git
 
-Your application should now be running on http://localhost:3000.
+### Installation
+
+1. Clone the repository:
+```bash
+git clone https://github.com/StabilityNexus/Clowder.git
+cd Clowder
+```
+
+2. Install dependencies:
+```bash
+npm install
+# or
+yarn install
+```
+
+3. Configure environment variables:
+
+Create a `.env` file in the root directory:
+```
+NEXT_PUBLIC_PROJECT_ID=your-project-id
+```
+
+4. Obtain your Project ID:
+   - Navigate to [https://cloud.reown.com/](https://cloud.reown.com/)
+   - Create an account or sign in
+   - Create a new project
+   - Copy the Project ID from your project dashboard
+   - Add it to your `.env` file
+
+5. Start the development server:
+```bash
+npm run dev
+# or
+yarn dev
+```
+
+The application will be available at [http://localhost:3000](http://localhost:3000).
+
+## Project Structure
+
+```
+Clowder/
+├── contracts/       # Smart contract source files
+├── test/           # Contract test suites
+├── web/            # Next.js frontend application
+├── .github/        # GitHub Actions workflows
+└── hardhat.config.js
+```
+
+## Smart Contract Development
+
+The project uses Hardhat for smart contract development and testing. Key configuration files:
+
+- `hardhat.config.js`: Hardhat configuration
+- `contracts/`: Solidity smart contracts
+- `test/`: Contract test files
+
+## Contributing
+
+Contributions are welcome. Please ensure all tests pass before submitting pull requests.
+
+## License
+
+Please refer to the repository for license information.
+
+## Links
+
+- [CAT Documentation](https://docs.stability.nexus/about-us/the-stable-order/cats)
+- [Reown Cloud](https://cloud.reown.com/)
+
+## Support
+
+For issues and questions, please use the GitHub Issues section of this repository.
