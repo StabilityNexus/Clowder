@@ -79,7 +79,7 @@ Each CAT contract created through Clowder has the following properties:
 10. Transfers may be **restricted to existing holders**.  
 11. Owners may **permanently disable** transfer restrictions.
 
----
+### Frontend Pages
 
 # 🖥 Platform Frontend Pages
 
