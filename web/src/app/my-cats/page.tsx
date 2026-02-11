@@ -693,7 +693,7 @@ export default function MyCATsPage() {
           >
             <div className="flex flex-col md:flex-row justify-between items-center mb-12">
               <motion.h1
-                className="text-4xl md:text-5xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-blue-300 dark:from-[#FFD600] dark:to-yellow-100 mb-4 md:mb-0 drop-shadow-lg"
+                className="text-4xl md:text-5xl font-extrabold bg-clip-text text-transparent leading-[1.2] pb-1.5 antialiased bg-gradient-to-r from-blue-500 to-blue-300 dark:from-[#FFD600] dark:to-yellow-100 mb-4 md:mb-0 drop-shadow-lg"
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
