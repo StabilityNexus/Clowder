@@ -1031,7 +1031,7 @@ export default function InteractionClient() {
         {/* Header Section */}
         <div className="text-center mb-8">
           <motion.h1 
-            className="text-4xl md:text-5xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-blue-200 dark:from-[#FFD600] dark:to-white mb-4 md:mb-0 drop-shadow-lg"
+            className="text-4xl md:text-5xl font-extrabold bg-clip-text text-transparent leading-[1.2] pb-1.5 antialiased bg-gradient-to-r from-blue-600 to-blue-200 dark:from-[#FFD600] dark:to-white mb-4 md:mb-0 drop-shadow-lg"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
